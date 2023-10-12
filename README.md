@@ -10,7 +10,7 @@ Result files 'model_sample.npy' including MAP partition Z are located in results
 ### Scripts
 - main.py: Main script for defining parameters and running model
 - model.py: Multinomial Stochastic Block Model (mSBM) class with Gibbs sampling inference
-- createGraphs.m: Generate adjacency matrices (graphs) from fMRI and dMRI images  
+- createGraphs.m: Generate adjacency matrices (graphs) from dMRI (structural) and fMRI (functional) images  
 - helper_functions.py: Helper functions
 - run_mri_batchjobs.sh: Submit multiple batchjobs (MRI data experiments)
 - run_syn_batchjobs.sh: Submit multiple batchjobs (synthetic data experiments)
