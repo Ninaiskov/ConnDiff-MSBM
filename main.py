@@ -40,7 +40,6 @@ def main(config):
         with open(os.path.join(config.save_dir, 'log.txt'), 'w') as f:
             f.write(f"dataset: {config.dataset}\n")
             f.write(f"exp_name: {exp_name}\n")
-            f.write(f"N: {config.N}\n")
             f.write(f"K: {config.K}\n")
             f.write(f"S1: {config.S1}\n")
             f.write(f"S2: {config.S2}\n")
@@ -74,19 +73,12 @@ if __name__ == '__main__':
     # Data configuration.
     parser.add_argument('--dataset', type=str, default='synthetic', help='dataset name (synthetic, hcp, decnef)')
         # Synthetic data configuration. 
-    parser.add_argument('--N', type=int, default=100, help='number of nodes in each cluster (synthetic data)')
     parser.add_argument('--K', type=int, default=5, help='number of clusters (synthetic data)')
     parser.add_argument('--S1', type=int, default=5, help='number of graphs of type 1 (synthetic data)')
     parser.add_argument('--S2', type=int, default=5, help='number of graphs of type 2 (synthetic data)')
     parser.add_argument('--Nc_type', type=str, default='unbalanced', help='balanced or unbalanced no. of nodes in each cluster')
-    parser.add_argument('--eta_similarity', type=str, default='comp_diff', help='same, comp_diff or part_diff (how similar eta1 and eta2 should be)') # only used in thesis
     parser.add_argument('--alpha', type=float, default=0, help='scaling parameter for similiarty between eta_p1 and eta_p2 (used for article synthetic data)') # only used in article
 
-        # MRI data configurations (fMRI and/or dMRI)
-    parser.add_argument('--atlas_name', type=str, default='schaefer', help='atlas name (schaefer)')
-    parser.add_argument('--n_rois', type=int, default=100, help='number of ROIs (hcp/decnef data): 100, 200 or 300')
-    parser.add_argument('--threshold_annealing', type=bool, default=False, help='use threshold annealing (True/False). If True, threshold annealing is used to increase graph density over iterations')
-    
     # Model configuration.
     parser.add_argument('--model_type', type=str, default='parametric', help='model type (nonparametric/parametric)')
     parser.add_argument('--noc', type=int, default=50, help='intial number of clusters')
@@ -98,7 +90,6 @@ if __name__ == '__main__':
     parser.add_argument('--maxiter_alpha', type=int, default=100, help='max number of MH iterations for sampling alpha')
     parser.add_argument('--maxiter_splitmerge', type=int, default=10, help='max number of splitmerge iterations')
     parser.add_argument('--unit_test', type=bool, default=False, help='perform unit test (True/False)')
-    parser.add_argument('--matlab_compare', type=bool, default=False, help='compare to matlab code (True/False). If True, random variables are initiated from the saved random variables in folder matlab_randvar')
     parser.add_argument('--use_convergence_criteria', type=bool, default=True, help='use convergence criteria (True/False). If True, the algorithm stops when the convergence criteria is met')
     
     # Miscellaneous.
