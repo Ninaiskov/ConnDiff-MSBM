@@ -232,7 +232,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
             # Remove effect of node i in partion, i.e. Z[:,i]
             self.sumZ -= Z[:, i]
             # Compute link contribution of node i to log likelihood
-            if self.dataset == 'hcp_article':
+            if self.dataset == 'hcp':
                 ZAi = np.stack([(As[i,:] @ Z.T) for As in self.A], axis=2).transpose(1,0,2)
             else:
                 ZAi = np.stack([Z @ self.A[:, i, s] for s in range(self.S)], axis=1)
