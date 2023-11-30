@@ -14,7 +14,7 @@ import networkx as nx
 from scipy.stats import entropy
 from scipy.sparse import load_npz, triu
 from scipy.io import loadmat
-from scipy.sparse import csr_matrix, load_npz, triu # csc_matrix
+from scipy.sparse import csr_matrix, load_npz, triu
 from matplotlib.patches import Ellipse, Arc
 from matplotlib.colors import Normalize
 from matplotlib import colormaps
@@ -26,14 +26,14 @@ label_fontsize = 15
 legend_fontsize = 10
 subtitle_fontsize = 16
 title_fontsize = 18
-dpi = 400#600
+dpi = 400
 cmap_color=plt.cm.Greys
 
 os.environ["OMP_NUM_THREADS"] = "10"  # set number of threads
 
 def get_exp_overview(top_dir):
     ## INPUT
-    # top_dir:  top-level results directory containing the log files, e.g. 'results/hcp_article/'
+    # top_dir:  top-level results directory containing the log files, e.g. 'results/hcp/'
     
     ## OUTPUT
     # df_new:   Pandas DataFrame with experiment overview (containing the data from the log file)
@@ -86,7 +86,7 @@ def get_exp_overview(top_dir):
     return df_new
 
 
-def generate_syndata(K, S1, S2, Nc_type, alpha, seed=0, save_data=False, disp_data = False, dataset='synthetic_article',
+def generate_syndata(K, S1, S2, Nc_type, alpha, seed=0, save_data=False, disp_data = False, dataset='synthetic',
                      label_fontsize=label_fontsize, subtitle_fontsize=subtitle_fontsize, title_fontsize=title_fontsize, cmap_color=cmap_color):
     ## Inputs
     # K                     Number of clusters;
@@ -134,46 +134,7 @@ def generate_syndata(K, S1, S2, Nc_type, alpha, seed=0, save_data=False, disp_da
         print('Unknown Nc_type')
         
     ## 2) Computing population cluster-link probability matrices (eta_p1 and eta_p2)
-    # random initiating eta-matrices making sure that eta1 and eta2 are different in all elements
-    #eta1 = np.random.choice(np.linspace(0,0.5,K*K),(K,K))
-    #eta2 = np.random.choice(np.linspace(0.51,1,K*K),(K,K))
-    
-    '''
-    # old
-    eta1 = np.random.rand(K,K)
-    if ini_diff == 'small':
-        eta2 = eta1.copy()
-        #if K == 2:
-            #eta2[0,0] = np.random.rand(1,1)
-        #elif K == 5:
-            #eta2[:3,:3] = np.random.rand(3,3)
-        if K == 10:
-            eta2[:2,:2] = np.random.rand(2,2) # effectively changing 2*(2+1)/2 = 3 out of 55 elements (only upper triangular incl. diagonal matters)
-        else:
-            print('elementwise '+ini_diff+' difference for eta2 is not specfied for chosen K')
-    elif ini_diff == 'medium':
-        eta2 = eta1.copy()
-        #if K == 2:
-        #    eta2[0,0] = np.random.rand(1,1)
-        #elif K == 5:
-        #    eta2[:3,:3] = np.random.rand(3,3)
-        if K == 10:
-            eta2[:6,:6] = np.random.rand(6,6) # effectively changing 6*(6+1)/2 = 21 out of 55 elements (only upper triangular incl. diagonal matters)
-        else:
-            print('elementwise '+ini_diff+' difference for eta2 is not specfied for chosen K')
-    elif ini_diff == 'full':
-        eta2 = np.random.rand(K,K)
-    else:
-        print('eta_similarity not specified') 
-        
-    # making eta-matrices symmetric
-    eta1 = np.triu(eta1, 0) + np.triu(eta1, 0).T
-    eta2 = np.triu(eta2, 0) + np.triu(eta2, 0).T
-
-    eta_p1 = (1-alpha)*eta1 + alpha*eta2
-    eta_p2 = alpha*eta1 + (1-alpha)*eta2
-    '''
-    # new: this way eta1 will always have high within compared to between cluster-linkprob. and vice versa with eta2.
+    # defining eta-matrices: eta1 will always have high within compared to between cluster-linkprob. and vice versa with eta2.
     eta1 = np.random.choice(np.linspace(0,0.4,K*K),(K,K))
     eta1[np.diag_indices_from(eta1)] = np.ones(K)*0.9
     eta2 = 1-eta1 
@@ -207,42 +168,6 @@ def generate_syndata(K, S1, S2, Nc_type, alpha, seed=0, save_data=False, disp_da
             A[:,:,s] = np.triu(At, 1) + np. triu(At, 1).T
 
     # 4) Computed expected partitions based on alpha and Nc_type
-    '''
-    # old
-    diff_clusters = np.where(np.any(np.triu(eta_p1-eta_p2,0),axis=1))[0] # difference clusters
-    if alpha == 1:
-        Zexp = np.ones((N,1))
-    #elif alpha == 0:
-    #    Zexp = Z.copy()
-    #elif (alpha > 0) & (alpha < 0.5):
-    elif alpha >= 0:
-        if Nc_type == 'balanced':
-            if K == 10:
-                Nc_list_ini = np.array([10, 10, 10, 10, 10, 10, 10, 10, 10, 10])
-            else:
-                print('Nc_list_ini not specfied for chosen K') 
-        elif Nc_type == 'unbalanced': 
-            if K == 10:
-                Nc_list_ini = np.array([20, 20, 10, 10, 10, 10, 5, 5, 5, 5])
-            else:
-                print('Nc_list_ini not specfied for chosen K') 
-        else:
-            print('Unknown Nc_type')
-        remaining_nodes = np.delete(Nc_list_ini, diff_clusters).sum() # nodes that are not a part of difference-clusters
-        if remaining_nodes == 0:
-            Nc_list = Nc_list_ini
-        else:
-            Nc_list = np.append(Nc_list_ini[diff_clusters],remaining_nodes)
-        new_K = len(Nc_list)
-        Zexp = np.zeros((N, new_K))
-        for k in range(new_K): # len(Nc_list) = K
-            Nc = Nc_list[k]
-            cumsumNc = int(np.sum(Nc_list[:k]))
-            Zexp[cumsumNc:cumsumNc+Nc, k] = 1
-    else: 
-        print('Unknown alpha value') 
-    '''
-    # new
     diff_clusters = np.where(np.any(np.triu(eta_p1-eta_p2,0),axis=1))[0] # difference clusters
     if len(diff_clusters) > 0:
         remaining_nodes = np.delete(Nc_list, diff_clusters).sum() # nodes that are not a part of difference-clusters
@@ -397,7 +322,7 @@ def generate_syndata(K, S1, S2, Nc_type, alpha, seed=0, save_data=False, disp_da
     return A, Z, Zexp, eta_p1, eta_p2
 
 
-def get_syn_nmi(exp_paths, K, Nc_type, alpha, main_dir=main_dir, dataset='synthetic_article'):
+def get_syn_nmi(exp_paths, K, Nc_type, alpha, main_dir=main_dir, dataset='synthetic'):
     
     Zexp_filename = 'Zexp_'+str(K)+'_'+str(Nc_type)+'_{:.2g}'.format(alpha)
     Z_exp = np.load(os.path.join(main_dir,'data',dataset,Zexp_filename+'.npy'))
@@ -414,7 +339,7 @@ def get_syn_nmi(exp_paths, K, Nc_type, alpha, main_dir=main_dir, dataset='synthe
     return nmi_list
 
 
-def boxplot_syn_nmi(df, K, ini_noc, maxiter_gibbs=100, dataset='synthetic_article'):
+def boxplot_syn_nmi(df, K, ini_noc, maxiter_gibbs=100, dataset='synthetic'):
     # function for plotting boxplot of NMI(Z_MAP,Z_exp) across multiple initializations over alpha
 
     ## INPUT
@@ -465,8 +390,9 @@ def get_done_exp_list(exp_paths, maxiter_gibbs):
     exist_mask = [os.path.exists(os.path.join(path, 'model_sample'+str(maxiter_gibbs)+'.npy')) for path in exp_paths]
     exp_paths = [path for path, boolean in zip(exp_paths, exist_mask) if boolean] # only using experiments which are done running 
     return exp_paths
-    
-def get_stats(exp_folders, par, maxiter_gibbs, dataset='hcp_article'):
+
+
+def get_stats(exp_folders, par, maxiter_gibbs, dataset='hcp'):
     
     MAPpar_list = []
     par_list = []
@@ -492,10 +418,11 @@ def get_stats(exp_folders, par, maxiter_gibbs, dataset='hcp_article'):
     
     return MAPpar_list, par_list, mean_par, min_par, max_par
 
-def plot_par(df, par, miniter_gibbs=None, dataset='hcp_article', main_dir=main_dir, label_fontsize=label_fontsize, subtitle_fontsize=subtitle_fontsize, title_fontsize=title_fontsize, fig_name=None):
+
+def plot_par(df, par, miniter_gibbs=None, dataset='hcp', main_dir=main_dir, label_fontsize=label_fontsize, subtitle_fontsize=subtitle_fontsize, title_fontsize=title_fontsize, fig_name=None):
     
     # Input:  
-    # dataset: 'hcp_article'
+    # dataset: 'hcp'
     # df: dataframe with experiment overview
     # par: parameter to plot as a function of Gibbs iterations, e.g. 'logP' or 'noc'
     # miniter_gibbs: minimum Gibbs iteration to plot
@@ -538,7 +465,7 @@ def plot_par(df, par, miniter_gibbs=None, dataset='hcp_article', main_dir=main_d
         plt.savefig(os.path.join(main_dir,'figures/article',dataset+'_plot_'+par+'.png'), bbox_inches='tight', dpi=dpi)  
 
 
-def get_MAP_parlist(exp_folders, noc, par, dataset='hcp_article'): # this function might be unnecessary since we can get MAP_par_list from get_stats function
+def get_MAP_parlist(exp_folders, noc, par, dataset='hcp'): # this function might be unnecessary since we can get MAP_par_list from get_stats function
     exp_paths = [os.path.join(main_dir,'results',dataset,folder) for folder in exp_folders]
     if noc < 100:
         maxiter_gibbs = 100
@@ -562,7 +489,7 @@ def generate_number_pairs(max_num):
     return pairs
 
 
-def get_pairwise_nmi(exp_folders, noc, main_dir=main_dir, dataset='hcp_article'):
+def get_pairwise_nmi(exp_folders, noc, main_dir=main_dir, dataset='hcp'):
     # compute pairwise nmi for hcp data
     
     exp_paths = [os.path.join(main_dir,'results',dataset,folder) for folder in exp_folders]
@@ -586,6 +513,7 @@ def get_pairwise_nmi(exp_folders, noc, main_dir=main_dir, dataset='hcp_article')
         nmi_list.append(nmi)
     
     return nmi_list
+
 
 def boxplot_par_over_ininoc(df, par):
     # function for plotting boxplot of a given parameter across multiple initializations over initial noc
@@ -690,7 +618,7 @@ def plot_par_over_ininoc(df, pars):
      
         
 def plot_eta(dataset, eta, exp_name_title=None, main_dir=main_dir, label_fontsize=label_fontsize, subtitle_fontsize=subtitle_fontsize, title_fontsize=title_fontsize, cmap_color=cmap_color):
-    if dataset == 'hcp_article' or dataset == 'synthetic_article':
+    if dataset == 'hcp' or dataset == 'synthetic':
         S1 = 5 
         S2 = 5
         # note: for mri, the first 5 graphs are functional and last 5 graphs structural 
@@ -726,10 +654,10 @@ def plot_eta(dataset, eta, exp_name_title=None, main_dir=main_dir, label_fontsiz
             axs[s].set_xticks(xy_ticks)
             axs[s].set_xticklabels(xy_ticks)
 
-    if dataset == 'hcp_article':
+    if dataset == 'hcp':
         axs[0].set_title('Functional', fontsize=subtitle_fontsize, weight='bold')
         axs[5].set_title('Structural', fontsize=subtitle_fontsize, weight='bold')
-    elif dataset == 'synthetic_article':
+    elif dataset == 'synthetic':
         axs[0].set_title('Type 1', fontsize=subtitle_fontsize, weight='bold')
         axs[5].set_title('Type 2', fontsize=subtitle_fontsize, weight='bold')
     else: 
@@ -765,6 +693,7 @@ def center_crop(im, crop_shape):
     im_crop = im.crop((left, top, right, bottom))
     return im_crop
 
+
 def merge_images(im1,im2,im3, crop_shape, paste_shape, merged_im_title):
     # merge images from different views into one (brain icons for each cluster in connectivity plot)
 
@@ -785,47 +714,6 @@ def merge_images(im1,im2,im3, crop_shape, paste_shape, merged_im_title):
     newnew_image.save('figures/article/'+merged_im_title, 'PNG')
     return newnew_image
 
-'''
-def compute_Glasser_A(filename):
-    # Compute new adjacency matrix as mean of original node-links within and between atlas nodes
-    ## INPUT
-    # filename          filename of dmri or fmri graph from HCP data e.g. 'dmri_sparse1.npz' or 'fmri_sparse1.npz' (dimension 59412x59412)
-    
-    ## OUTPUT
-    # Glasser_A         new adjacency matrix (dimension 360x360)
-    
-    # load Glasser parcellation
-    parcels_L = scipy.io.loadmat(os.path.join(main_dir,'data','hcp_article','Glasser_L.mat'))['parcels'].flatten().astype(np.int32)
-    parcels_R = scipy.io.loadmat(os.path.join(main_dir,'data','hcp_article','Glasser_R.mat'))['parcels'].flatten().astype(np.int32)
-    # NOTICE THAT RIGHT PARCELS ARE SHIFTED, SO WE HAVE 360 UNIQUE LABELS
-    parcels = np.append(parcels_L,parcels_R + np.max(parcels_L))
-
-    # compute list of lists with original nodes belonging to respective atlas node (distribution of 59412 nodes into 360 nodes)
-    nodes_per_label = [np.where(parcels==label)[0] for label in np.unique(parcels)]
-
-    # load original graph
-    data_path = os.path.join(main_dir, 'data','hcp_article')
-    graph = load_npz(os.path.join(data_path, filename)).astype(dtype=np.int32)
-    #graph = triu(graph,0)+triu(graph,1).T # unneccessary since we only compute values for upper triangular indices
-
-    n_rois = len(nodes_per_label) # Glasser atlas dimension (360)
-    Glasser_A = np.full((n_rois, n_rois), np.nan)
-    # defining upper triangular indices to loop over (no need to compute remaining values, since adjacency matrix should be symmetric)
-    triu_indices = np.triu_indices(n_rois, k=0)
-    for i, j in zip(triu_indices[0], triu_indices[1]):
-        # compute all possible original node-pairs within a single atlas node (i=j) or between two different atlas nodes (i!=j)
-        #node_pairs = [[x, y] for x in nodes_per_label[i] for y in nodes_per_label[j]]
-        node_pairs = np.array(np.meshgrid(nodes_per_label[i], nodes_per_label[j])).T.reshape(-1, 2) # avoiding loop using meshgrid
-        # compute mean link value for respective node pairs
-        #mean_elem = np.mean([graph[node_pair[0],node_pair[1]] for node_pair in node_pairs])
-        mean_elem = np.mean(graph[node_pairs[:, 0], node_pairs[:, 1]])
-        Glasser_A[i,j] = mean_elem
-
-    Glasser_A = np.triu(Glasser_A,0)+np.triu(Glasser_A,1).T # making it symmetric (Adding transposed triu part as tril part. OBS! only including main diagonal once)
-    np.save(os.path.join(data_path,'Glasser_A_'+filename.split('.')[0]+'_newnew.npy'),Glasser_A)
-    return Glasser_A
-'''
-
 def compute_Glasser_A(filename):
     # Compute new adjacency matrix with density estimated using Glasser atlas parcellation
     ## INPUT
@@ -836,13 +724,13 @@ def compute_Glasser_A(filename):
     
 
     # load Glasser parcellation
-    parcels_L = loadmat(os.path.join(main_dir,'data','hcp_article','Glasser_L.mat'))['parcels'].flatten().astype(np.int32)
-    parcels_R = loadmat(os.path.join(main_dir,'data','hcp_article','Glasser_R.mat'))['parcels'].flatten().astype(np.int32)
+    parcels_L = loadmat(os.path.join(main_dir,'data','hcp','Glasser_L.mat'))['parcels'].flatten().astype(np.int32)
+    parcels_R = loadmat(os.path.join(main_dir,'data','hcp','Glasser_R.mat'))['parcels'].flatten().astype(np.int32)
     # NOTICE THAT RIGHT PARCELS ARE SHIFTED, SO WE HAVE 360 UNIQUE LABELS
     z = np.append(parcels_L, parcels_R + np.max(parcels_L)) # cluster labels z 
 
     # load original graph
-    data_path = os.path.join(main_dir, 'data','hcp_article')
+    data_path = os.path.join(main_dir, 'data','hcp')
     A = load_npz(os.path.join(data_path, filename)).astype(dtype=np.int32)
     A = triu(A,1)
 
@@ -859,7 +747,7 @@ def compute_Glasser_A(filename):
     return etaD
 
 
-def get_best_run(df, noc, dataset='hcp_article'):
+def get_best_run(df, noc, dataset='hcp'):
     # get name of experiment/run with highest MAP estimate across random runs! 
     exp_folders = df[(df.noc==noc)].exp_name_list.iloc[0]
     exp_paths = [os.path.join(main_dir,'results',dataset,folder) for folder in exp_folders]
@@ -877,6 +765,7 @@ def get_best_run(df, noc, dataset='hcp_article'):
         
     best_run_exp_folder = exp_folders[np.argmax(MAPpar_list)]
     return best_run_exp_folder
+
 
 def plot_eta_metric_matrix(eta, metric, subset=None):
     noc = eta.shape[0]
@@ -913,7 +802,8 @@ def plot_eta_metric_matrix(eta, metric, subset=None):
     else:
         plt.title(title_dict[metric] + ' - All', fontsize = subtitle_fontsize, weight='bold')
         plt.savefig(os.path.join(main_dir, 'figures/article/eta_'+metric+'_mat_'+ str(noc) + '_all.png'), bbox_inches='tight', dpi=dpi)
-        
+
+
 def get_curved_line(start, end, direction, shift=0.1, num_points=100):
     # get curved line using Bezier lines 
     '''
@@ -1075,7 +965,6 @@ def plot_eta_graph(eta, top_links=False, plot_function=True, plot_structure=True
         if plot_structure & (eta_mean_s[i,j] > 0):
             ax.plot(arc_x2, arc_y2, color=sm_s.to_rgba(eta_mean_s[i, j]), linewidth=lw_inter, zorder=1)
         
-            
     # Plot the nodes
     ax.scatter(pos[:, 0], pos[:, 1], s=100, color='grey', zorder=2)
 
@@ -1141,379 +1030,3 @@ def plot_eta_graph(eta, top_links=False, plot_function=True, plot_structure=True
         fig.savefig(os.path.join(main_dir, 'figures/article/eta_mean_graph_'+ str(K)+'.png'), bbox_inches='tight', dpi=dpi)
         fig_f.savefig(os.path.join(main_dir, 'figures/article/eta_mean_fmat_'+ str(K)+'.png'), bbox_inches='tight', dpi=dpi)
         fig_s.savefig(os.path.join(main_dir, 'figures/article/eta_mean_smat_'+ str(K)+'.png'), bbox_inches='tight', dpi=dpi)
-
-
-
-############# OLD FUNCTIONS ###########
-def plot_circ_eta_OLD1(eta, Z, metric='std', subset=None, threshold=0, main_dir=main_dir, label_fontsize=label_fontsize, subtitle_fontsize=subtitle_fontsize, title_fontsize=title_fontsize):
-    noc = Z.shape[0]
-    node_size = 300 # set to 0 to remove nodes
-    '''
-    if subset == 'fmri':
-        eta = eta[:5]
-    elif subset == 'dmri':
-        eta = eta[5:]
-    else:
-        print('Not using subset')
-    '''
-    # threshold = link probability threshold (e.g based on np.percentile(eta_example.flatten(),99)))
-    if metric == 'mean':
-        eta = np.mean(eta, axis=2)
-    elif metric == 'std':
-        eta = np.std(eta, axis=2)
-    elif metric == 'KL_div': # KL divergence = relative entropy
-        eta = entropy(eta, np.ones(eta.shape), axis=2) # relative to uniform distribution
-    else:
-        print('Not using metric')
-        
-    eta_example = np.triu(eta) # upper triangular matrix
-    # create a graph from the matrix
-    #G = nx.from_numpy_array(eta_example)
-
-    # add only edges above the threshold
-    G = nx.Graph()
-    for i in range(noc):
-        G.add_node(i)
-    for i, j in zip(*np.where(np.triu(eta_example) > threshold)):
-        G.add_edge(i, j, weight=eta_example[i, j])
-    
-    # draw the graph in a circular layout
-    pos = nx.circular_layout(G)
-    
-    # Calculate node positions in a circular layout manually
-    pos = {}
-    radius = 0.5  # Adjust the radius as needed
-    for i in range(noc):
-        angle = 2 * np.pi * i / noc
-        x = radius * np.cos(angle)
-        y = radius * np.sin(angle)
-        pos[i] = (x, y)
-        
-    node_colors = sns.color_palette('hls', noc)
-    #node_colors = sns.color_palette('tab10')
-    
-    # Custom palette with the same color
-    same_color = '#C1CDCD' #"#FF5733"  # desired color code
-    color_list = [same_color for x in range(noc)]
-    node_colors = sns.color_palette(color_list) # custom palette with same color
-    
-    # Draw edges with colors and widths based on weights
-    edges = G.edges()
-    weights = [G[u][v]['weight'] for u,v in edges]
-    edge_colors = [eta_example[i, j] for i, j in zip(*np.where(np.triu(eta_example) > threshold))]
-    width_scale = 10 # edge-width scale
-    edge_widths = [w * width_scale for w in weights]
-    edge_cmap = plt.cm.Purples#OrRd
-    
-    #plt.figure(figsize=(16, 11))
-    plt.figure(figsize=(10, 6))
-    plt.axis('off')  # Turn off axes
-
-    nx.draw_networkx_edges(G, 
-                           pos=pos, 
-                           edgelist=edges, 
-                           edge_color=edge_colors, 
-                           edge_cmap=edge_cmap,
-                           width=edge_widths, 
-                           arrows=True, 
-                           connectionstyle="arc3, rad=-0.1")
-
-    # Draw nodes
-    nx.draw_networkx_nodes(G, pos=pos, node_color=node_colors, node_size=node_size)
-
-    # Draw labels
-    labels = {i: i for i in range(noc)}
-    nx.draw_networkx_labels(G, pos=pos, labels=labels, font_size=label_fontsize)
-    
-    # add a colorbar for the edge colors
-    sm = plt.cm.ScalarMappable(cmap=edge_cmap, norm=plt.Normalize(vmin=eta_example.min(), vmax=eta_example.max()))
-    sm.set_array([])
-    plt.colorbar(sm, pad=0.14, shrink=0.7) 
-
-    # draw with images on nodes
-    '''
-    path = 'some/folder/with/png/files'
-    files = [f for f in glob.glob(path + "*.png")]
-    img = []
-    for f in files:
-        img.append(mpimg.imread(f))
-    N = len(files)
-    '''
-    #test_img = mpimg.imread('merged_im2.png') # FOR TESTING
-    #N = 10 # number of clusters # FOR TESTING
-    images = []
-    node_labels = np.argmax(Z,axis=0)+1
-    label_list = np.unique(node_labels)
-    noc = len(label_list)
-    for label in label_list:
-        im = mpimg.imread('figures/article/brain_merged_'+str(noc)+'_'+str(label)+'.png')
-        images.append(im)
-    
-    #Displaying image icons on networkx nodes:
-    #https://stackoverflow.com/questions/56873621/how-to-display-image-icons-on-nodes-in-networkx 
-    ax=plt.gca()
-    fig=plt.gcf()
-    trans = ax.transData.transform
-    trans2 = fig.transFigure.inverted().transform
-    image_shift = 0.19 # Adjust this value to control the shift
-    imsize = 0.096 # this is the image size
-    for n in G.nodes():
-        (x,y) = pos[n]
-        shift_x = x + image_shift * np.cos(2 * np.pi * n / noc)
-        shift_y = y + image_shift * np.sin(2 * np.pi * n / noc)
-        xx,yy = trans((shift_x,shift_y)) # figure coordinates
-        xa,ya = trans2((xx,yy)) # axes coordinates
-        a = plt.axes([xa - imsize/2.0, ya - imsize/2.0, imsize, imsize ])
-        a.imshow(images[n])
-        a.set_aspect('equal')
-        a.axis('off')
-    fig.show()
-    
-    # show the plot
-    if metric == 'mean':
-        if subset is not None:
-            fig.suptitle('Mean of cluster-link probabilities - '+subset, fontsize=title_fontsize, weight='bold', x=0.4, y=1.03)
-            fig.savefig(main_dir+'/figures/article/eta_mean_circ'+str(noc)+'_'+subset+'.png', bbox_inches='tight', dpi=dpi)
-        else:
-            fig.suptitle('Mean of cluster-link probabilities - all', fontsize=title_fontsize, weight='bold', x=0.4, y=1.03)
-            fig.savefig(main_dir+'/figures/article/eta_mean_circ'+str(noc)+'_all.png', bbox_inches='tight', dpi=dpi)
-    elif metric == 'std':
-        if subset is not None:
-            fig.suptitle('Std. of cluster-link probabilities - '+subset, fontsize=title_fontsize, weight='bold', x=0.4, y=1.03)
-            fig.savefig(main_dir+'/figures/article/eta_std_circ'+str(noc)+'_'+subset+'.png', bbox_inches='tight', dpi=dpi)
-        else:
-            fig.suptitle('Std. of cluster-link probabilities - all', fontsize=title_fontsize, weight='bold', x=0.4, y=1.03)
-            fig.savefig(main_dir+'/figures/article/eta_std_circ'+str(noc)+'_all.png', bbox_inches='tight', dpi=dpi)
-    elif metric == 'KL_div':
-        if subset is not None:
-            fig.suptitle('KL div. of cluster-link probabilities - '+subset, fontsize=title_fontsize, weight='bold', x=0.4, y=1.03)
-            fig.savefig(main_dir+'/figures/article/eta_KLdiv_circ'+str(noc)+'_'+subset+'.png', bbox_inches='tight', dpi=dpi)
-        else:
-            fig.suptitle('KL div. of cluster-link probabilities - all', fontsize=title_fontsize, weight='bold', x=0.4, y=1.03)
-            fig.savefig(main_dir+'/figures/article/eta_KLdiv_circ'+str(noc)+'_all.png', bbox_inches='tight', dpi=dpi)
-    else:
-        print('unknown metric')
-
-def plot_circ_eta_OLD2(eta, Z, metric, subset=None, main_dir=main_dir, label_fontsize=label_fontsize, subtitle_fontsize=subtitle_fontsize, title_fontsize=title_fontsize):
-    noc = Z.shape[0] # number of clusters (same as eta.shape[0])
-    node_size = 300  # set to 0 to remove nodes
-    if noc == 4: 
-        figsize = (10, 8)
-        # graph layout params
-        scale = 0.5
-        # colorbar params
-        pad = 0.4
-        shrink = 0.7
-        tick_font_size = 20
-        # brain images params
-        image_shift = 0.45
-        imsize = 1/noc#
-        # title params
-        title_fontsize = 18
-        title_x = 0.4
-        title_y = 1.15
-    elif noc == 3:
-        figsize = (10, 8)
-        # graph layout params
-        scale = 0.5
-        # colorbar params
-        pad = 0.4
-        shrink = 0.7
-        tick_font_size = 20
-        # brain images params
-        image_shift = 0.45
-        imsize = 1/noc
-        # title params
-        title_fontsize = 18
-        title_x = 0.4
-        title_y = 1.2
-    elif noc == 2:
-        figsize = (8, 4)
-        # graph layout params
-        scale = 0.5
-        # colorbar params
-        pad = 0.45 # colorbar shift
-        shrink = 0.7
-        tick_font_size = 20
-        # brain images params
-        image_shift = 0.63
-        imsize = 1/noc
-        # title params
-        title_fontsize = 18
-        title_x = 0.4
-        title_y = 1.2
-    else:
-        print('Figure parameters undefined for specificed noc')
-        figsize = (10, 8)
-        # graph layout params
-        scale = 0.5
-        # colorbar params
-        pad = 0.4
-        shrink = 0.7
-        tick_font_size = 20
-        # brain images params
-        image_shift = 0.45
-        imsize = 1/noc#
-        # title params
-        title_fontsize = 18
-        title_x = 0.4
-        title_y = 1.15
-
-    # Defining subset of eta
-    if subset == 'fmri':
-        eta_set = eta[:,:,:5]
-    elif subset == 'dmri':
-        eta_set = eta[:,:,5:]
-    else:
-        print('Not using subset')
-        eta_set = eta
-        
-    # Computing respective metric of eta across population
-    eta_mean = np.mean(eta_set, axis=2)
-    if metric == 'std':
-        eta_metric = np.std(eta_set, axis=2)
-    elif metric == 'KL_div':  # KL divergence = relative entropy
-        eta_metric = entropy(eta_set, np.ones(eta_set.shape), axis=2)  # relative to a uniform distribution
-    elif metric == 'mean':
-        eta_metric = np.mean(eta_set, axis=2)
-    else:
-        print('Not using metric')
-
-    # Create graph object
-    G = nx.Graph()
-    # Add nodes
-    for i in range(noc):
-        G.add_node(i)
-    # Add edges    
-    triu_indices = np.triu_indices(noc, k=0) # due to symmetric eta, we only plot the upper triangular values
-    for i, j in zip(triu_indices[0], triu_indices[1]):
-        weight = eta_mean[i, j]
-        G.add_edge(i, j, weight=weight, label=format(weight, '.3f'))
-
-    # Draw the graph in a circular layout
-    pos = nx.circular_layout(G,scale=scale)
-    '''
-    # Calculate node positions in a circular layout manually
-    pos = {}
-    radius = 0.5  # Adjusting radius
-    for i in range(noc):
-        angle = 2 * np.pi * i / noc
-        x = radius * np.cos(angle)
-        y = radius * np.sin(angle)
-        pos[i] = (x, y)
-    '''    
-    # Define node colors: custom palette with the same color
-    same_color = '#C1CDCD' #"#FF5733"  # desired color code (gray)
-    color_list = [same_color for x in range(noc)]
-    node_colors = sns.color_palette(color_list) # custom palette with same color
-
-    # Edge widths is based on weight (mean value)
-    # edgelist = G.edges()
-    edgelist = [e for e in G.edges() if e not in nx.selfloop_edges(G)]
-    width_scale = 25  # edge-width scale to make thicker for visual purposes
-    weights = [width_scale * G[u][v]['weight'] for u, v in edgelist]
-
-    # Custom palette with hot-cold colorscale based on standard deviation
-    edge_all_colors = eta_metric[triu_indices]
-    edge_inter_colors = eta_metric[np.triu_indices(noc, k=1)]
-    edge_intra_colors = np.diag(eta_metric)
-    #edge_cmap = plt.cm.get_cmap('coolwarm')
-    edge_cmap = colormaps['coolwarm']
-    edge_vmin = edge_all_colors.min()
-    edge_vmax = edge_all_colors.max()
-    color_normal = Normalize(vmin=edge_vmin, vmax=edge_vmax)
-    edge_intra_colors = [edge_cmap(color_normal(e)) for e in edge_intra_colors]
-        
-    selfedge_colors = np.diag(eta_metric) # need to map this to the coolwarrm color scale so it fits (correct color compared to other edges)
-    selfedgelist = [e for e in G.edges() if e in nx.selfloop_edges(G)]
-    selfedge_weights = [width_scale * G[u][v]['weight'] for u, v in selfedgelist]
-
-    # plot self-loop on brain icons and save 
-    node_labels = np.argmax(Z, axis=0) + 1
-    label_list = np.unique(node_labels)
-    images = []
-    for label in label_list:
-        im = Image.open('figures/article/brain_merged_' + str(noc) + '_' + str(label) + '.png')
-        fig1,ax1 = plt.subplots(1)
-        ax1.imshow(im)
-        width_e = im.size[0]+100
-        height_e = im.size[1]+100
-        #ellipse = Ellipse((int(im.size[0]/2)+10,int(im.size[1]/2)-15), width=width_e, height=height_e, fill=False, color='red')
-        ellipse = Ellipse((330,250), width=width_e, height=height_e, fill=False, color=edge_intra_colors[label-1], linewidth=selfedge_weights[label-1])
-        ax1.add_patch(ellipse)
-        ax1.set_xlim([-60, 710])
-        ax1.set_ylim([580, -80])
-        ax1.axis('off')
-        plt.savefig(os.path.join(main_dir,'figures/article','brain_merged_'+str(noc)+'_'+str(label)+'_loop.png'), bbox_inches='tight')
-        plt.close()
-        im_loop = mpimg.imread('figures/article/brain_merged_' + str(noc) + '_' + str(label) + '_loop.png')
-        images.append(im_loop)
-
-    #plt.figure(figsize=(30, 20))
-    plt.figure(figsize=figsize)
-    plt.axis('off')  # Turn off axes
-    nx.draw_networkx_edges(G, 
-                            pos=pos, 
-                            edgelist=edgelist, # default G.edges()
-                            edge_color=edge_inter_colors, 
-                            edge_cmap=edge_cmap,
-                            edge_vmin=edge_vmin,
-                            edge_vmax=edge_vmax,
-                            width=weights, 
-                            arrows=True, 
-                            connectionstyle="arc3, rad=-0.1")
-
-    # Draw nodes
-    nx.draw_networkx_nodes(G, pos=pos, node_color=node_colors, node_size=node_size)
-
-    # Draw node labels
-    node_labels = {i: i for i in range(noc)} # nodes
-    edge_labels = {(i,j): format(weight, '3g') for i, j in zip(triu_indices[0], triu_indices[1])}
-    nx.draw_networkx_labels(G, pos=pos, labels=node_labels, font_size=label_fontsize)
-    #nx.draw_networkx_edge_labels(G, pos=pos, edge_labels = edge_labels, label_pos=0.35)
-    ax = plt.gca()
-    fig = plt.gcf()
-
-    # add a colorbar for the edge colors
-    sm = plt.cm.ScalarMappable(cmap=edge_cmap, norm=plt.Normalize(vmin=edge_vmin, vmax=edge_vmax))
-    sm.set_array([])
-    cbar = plt.colorbar(sm, pad=pad, shrink=shrink) 
-    cbar.ax.tick_params(labelsize=tick_font_size)
-
-    # Displaying image icons on networkx nodes
-    trans = ax.transData.transform
-    trans2 = fig.transFigure.inverted().transform
-    for n in G.nodes():
-        (x, y) = pos[n]
-        shift_x = x + image_shift * np.cos(2 * np.pi * n / noc)
-        shift_y = y + image_shift * np.sin(2 * np.pi * n / noc)
-        xx, yy = trans((shift_x, shift_y))  # figure coordinates
-        xa, ya = trans2((xx, yy))  # axes coordinates
-        if noc == 3:
-            if n == 1:
-                ya = ya - 0.103
-            elif n == 2:
-                ya = ya + 0.103
-            else:
-                ya = ya
-        if noc == 4:
-            if n == 1:
-                ya = ya - 0.14
-            elif n == 3:
-                ya = ya + 0.14
-            else:
-                ya = ya
-        a = plt.axes([xa - imsize/2.0, ya - imsize/2.0, imsize, imsize])
-        a.imshow(images[n])
-        a.set_aspect('equal')
-        a.axis('off')
-    fig.show()
-
-    # show the plot
-    title_dict = {'mean': 'Mean of $\eta$', 'std': 'Std. of $\eta$', 'KL_div': 'KL div. of $\eta$'}
-    if subset is not None:
-        fig.suptitle(title_dict[metric] + ' - ' + subset, fontsize = title_fontsize, weight='bold', x=title_x, y=title_y)
-        fig.savefig(os.path.join(main_dir, 'figures/article/eta_'+metric+'_graph_'+ str(noc) + '_' + subset + '.png'), bbox_inches='tight', dpi=dpi)
-    else:
-        fig.suptitle(title_dict[metric] + ' - All', fontsize = title_fontsize, weight='bold', x=title_x, y=title_y)
-        fig.savefig(os.path.join(main_dir, 'figures/article/eta_'+metric+'_graph_'+ str(noc) + '_all.png'), bbox_inches='tight', dpi=dpi)
