@@ -3,29 +3,16 @@ import argparse
 import time 
 from datetime import datetime
 import numpy as np
-from model_article import MultinomialSBM
-#import cProfile
-#import pstats
-#@profile # uncomment when using lineprofiler
+from model import MultinomialSBM
+
 def main(config):
     # initiate results folder and log.txt file
-    if config.dataset == 'synthetic':
-        #config.balance_Nc = False # Testing
-        exp_name = config.model_type+'_'+str(config.K)+'_'+str(config.S1)+'_'+str(config.S2)+'_'+config.Nc_type+'_'+config.eta_similarity+'_'+str(datetime.now())
-        #exp_name = config.model_type+'_Nc'+str(config.Nc)+'_K'+str(config.K)+'_S1'+str(config.S1)+'_S2'+str(config.S2)+'_'+str(datetime.now())#str(uuid.uuid4())
-    elif config.dataset == 'hcp' or config.dataset == 'decnef':
-        exp_name = config.model_type+'_'+config.atlas_name+str(config.n_rois)+'_'+str(datetime.now())#str(uuid.uuid4())
-    else: # article 
-        exp_name = config.dataset+'_'+str(datetime.now())#str(uuid.uuid4())
+    exp_name = config.dataset+'_'+str(datetime.now())
     config.save_dir = os.path.join(config.main_dir, 'results/'+config.dataset+'/'+exp_name)
     if not os.path.exists(config.save_dir):
         os.mkdir(config.save_dir)
     
     # making sure parameters make sense wrt. other parameters
-    if config.dataset == 'synthetic':
-        config.threshold_annealing = False # maybe we can actually create a similar method for synthetic data? just making the graph denser over iterations?
-    if config.dataset == 'hcp' or config.dataset == 'decnef':
-        config.matlab_compare = False
     if config.model_type == 'parametric':
         config.splitmerge = False
         config.threshold_annealing = False
@@ -38,39 +25,7 @@ def main(config):
     print(config)
         
     # log file with specifications for experiment:
-    if config.dataset == 'synthetic':
-        with open(os.path.join(config.save_dir, 'log.txt'), 'w') as f:
-            f.write(f"dataset: {config.dataset}\n")
-            f.write(f"exp_name: {exp_name}\n")
-            f.write(f"matlab_compare: {config.matlab_compare}\n")
-            f.write(f"N: {config.N}\n")
-            f.write(f"K: {config.K}\n")
-            f.write(f"S1: {config.S1}\n")
-            f.write(f"S2: {config.S2}\n")
-            f.write(f"Nc_type: {config.Nc_type}\n")
-            f.write(f"eta_similarity: {config.eta_similarity}\n")
-            f.write(f"model_type: {config.model_type}\n")
-            f.write(f"splitmerge: {config.splitmerge}\n")
-            f.write(f"noc: {config.noc}\n")
-            f.write(f"maxiter_gibbs: {config.maxiter_gibbs}\n")
-            f.write(f"maxiter_eta0: {config.maxiter_eta0}\n")
-            f.write(f"maxiter_alpha: {config.maxiter_alpha}\n")
-            #f.write(f"total_time_min: {elapsed_time}\n")
-    elif config.dataset == 'hcp' or config.dataset == 'decnef':
-        with open(os.path.join(config.save_dir, 'log.txt'), 'w') as f:
-            f.write(f"dataset: {config.dataset}\n")
-            f.write(f"exp_name: {exp_name}\n")
-            f.write(f"atlas_name: {config.atlas_name}\n")
-            f.write(f"n_rois: {config.n_rois}\n")
-            f.write(f"threshold_annealing: {config.threshold_annealing}\n")
-            f.write(f"model_type: {config.model_type}\n")
-            f.write(f"splitmerge: {config.splitmerge}\n")
-            f.write(f"noc: {config.noc}\n")
-            f.write(f"maxiter_gibbs: {config.maxiter_gibbs}\n")
-            f.write(f"maxiter_eta0: {config.maxiter_eta0}\n")
-            f.write(f"maxiter_alpha: {config.maxiter_alpha}\n")
-            #f.write(f"total_time_min: {elapsed_time}\n")
-    elif config.dataset == 'hcp_article':
+    if config.dataset == 'hcp':
         with open(os.path.join(config.save_dir, 'log.txt'), 'w') as f:
             f.write(f"dataset: {config.dataset}\n")
             f.write(f"exp_name: {exp_name}\n")
@@ -81,7 +36,7 @@ def main(config):
             f.write(f"maxiter_eta0: {config.maxiter_eta0}\n")
             f.write(f"maxiter_alpha: {config.maxiter_alpha}\n")
             #f.write(f"total_time_min: {elapsed_time}\n")
-    elif config.dataset == 'synthetic_article':
+    elif config.dataset == 'synthetic':
         with open(os.path.join(config.save_dir, 'log.txt'), 'w') as f:
             f.write(f"dataset: {config.dataset}\n")
             f.write(f"exp_name: {exp_name}\n")
@@ -98,7 +53,7 @@ def main(config):
             f.write(f"maxiter_eta0: {config.maxiter_eta0}\n")
             f.write(f"maxiter_alpha: {config.maxiter_alpha}\n")
     else: 
-        print('Unknown dataset. Please choose between synthetic, hcp or decnef.')
+        print('Unknown dataset. Please choose between synthetic or hcp.')
     
     start_time = time.time()
     
@@ -155,4 +110,3 @@ if __name__ == '__main__':
 
     config = parser.parse_args()
     main(config)
-    #cProfile.run('main(config)')
