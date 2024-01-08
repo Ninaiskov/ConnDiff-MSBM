@@ -44,6 +44,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
     # Predefied in code:
     # alpha         Hyperparameter for the Dirichlet prior on eta (default: np.log(N))
     # eta0          Initial value of 1 x S vector of clustering probabilities (default: np.ones(S)), where S is total number of graphs (subjects)
+    # n_graphs      Number of graphs used in threshold annealing (default: 4)
     
     # Output: model_sample.npy file containing:
     # iter          List of iterations
@@ -58,18 +59,26 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
     # MAP           MAP estimates for each parameter described above
     
     # Original Matlab version of code is written by Morten Mørup (name: IRMUnipartiteMultinomial.m)
-    # Python version of code and modifications is written by Nina Braad Iskov
+    # Python version of code and modifications is written by Nina Iskov
     
     def __init__(self, config):
         
         # Data configuration.
         self.dataset = config.dataset
             # Synthetic data configuration.
+        self.N = config.N
         self.K = config.K
         self.S1 = config.S1
         self.S2 = config.S2
         self.Nc_type = config.Nc_type
+        self.eta_similarity = config.eta_similarity
         self.alpha = config.alpha
+        
+            # MRI data configurations (fMRI and/or dMRI)
+        self.atlas_name = config.atlas_name
+        self.n_rois = config.n_rois
+        self.threshold_annealing = config.threshold_annealing
+        self.n_graphs = 4 # total number of graphs used in threshold annealing
         
         # Model configuration. 
         self.model_type = config.model_type
@@ -95,15 +104,19 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
         self.save_step = config.save_step
         
         self.it = 0
+        self.graph_count = 0 # count of graphs used in threshold annealing
         self.sample = {'iter': [], 'Z': [], 'noc': [], 'logP_A': [], 'logP_Z': [], 'logP': [], 'eta': [], 'alpha': [], 'eta0': []}
         
         # Load data (generate N x N x S adjacency matrix, A)
-        self.load_data()
+        #self.load_data() # data loader used for master thesis
+        #self.A = load_npz('data/hcp_article/A_syn.npz') # testing synthetic sparse article data (COO format)
+        #self.A = np.load('data/hcp_article/A_syn_small.npy', allow_pickle=True).tolist() # testing synthetic sparse article data (list of sparse csr matrices)
+        self.load_articledata() # NEW
         
         # Initialize variables
-        if self.dataset == 'hcp':
-            self.N = self.A[0].shape[0]
-            self.S = len(self.A)
+        if self.dataset == 'hcp_article':
+            self.N = self.A[0].shape[0] # NEW
+            self.S = len(self.A) # NEW
         else:
             self.N, _, self.S = self.A.shape # shape of adjacency matrix: N = number of nodes (size), S = number of graphs/subjects
         
@@ -111,20 +124,29 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
         self.eta0 = np.ones(self.S) # default (add to input later if needed)
         self.eta = np.zeros((self.noc, self.noc, self.S))
         
+        # Make sure A is unipartite and undirected (not neccessary since the data is generated this way)
+        #self.A = np.stack([np.triu(self.A[:,:,s],1) for s in range(self.S)],axis=2) # alternative 
+        #self.A = np.stack([self.A[:,:,s]+self.A[:,:,s].T for s in range(self.S)], axis=2) # alternative
+        # NEW ^commented out
+        
         # Initialize Z (random clustering assignment matrix)
-        ind = np.random.choice(self.noc, self.N)
-        self.Z = csr_matrix((np.ones(self.N), (ind, np.arange(self.N))), shape=(self.noc, self.N)).toarray()
+        if self.matlab_compare:
+            ind = scipy.io.loadmat('matlab_randvar/ind.mat')['ind'].ravel() -1 # TESTING
+        else:
+            ind = np.random.choice(self.noc, self.N)
+        self.Z = csr_matrix((np.ones(self.N), (ind, np.arange(self.N))), shape=(self.noc, self.N)).toarray() # NEW (changed from csc to csr)
         self.Z = self.Z[self.Z.sum(axis=1) > 0,:] # remove empty clusters (if any)
-        self.sumZ = [] # no. nodes in each cluster
+        self.sumZ = [] #np.sum(self.Z, axis=1) # no. nodes in each cluster
        
     def train(self):
+        
         # Set algorithm variables
         logP_list = [] # list for saving last 10 logP values (used for evaluate convergence)
         logP = -np.inf
         logP_best = -np.inf
 
         if self.disp: # Display algorithm
-            print('Uni-partite clustering based on the SBM model for Multinomial graphs')
+            print('Uni-partite clustering based on the IRM model for Multinomial graphs')
             dheader = '{:<12} | {:<12} | {:<12} | {:<12} | {:<12}'.format('Iteration', 'logP', 'dlogP/|logP|', 'noc', 'time')
             dline = '-------------+--------------+--------------+--------------+--------------'
             print(dline)
@@ -137,10 +159,25 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
             self.it += 1
             start_time = time.time()
             logP_old = logP
-
-            # Gibbs sampling of Z
-            JJ = np.random.permutation(self.N) # random permutation of the nodes
             
+            # Loading data
+            if self.threshold_annealing:
+                if (self.it-1) % int(self.maxiter/self.n_graphs) == 0 and self.it > 1:
+                    self.load_data()
+                    # Make sure A is unipartite and undirected (not really necessary since the graphs are constructed like this, but just to be sure)
+                    #for s in range(self.S):
+                        #self.A[:,:,s] = np.triu(self.A[:,:,s],1)
+                        #self.A[:,:,s] = self.A[:,:,s]+self.A[:,:,s].T # The adjacency matrix of an undirected graph is always symmetric (note setting diagonal to zero using triu)
+        
+            # Gibbs sampling of Z
+            if self.matlab_compare:
+                JJ_list = scipy.io.loadmat('matlab_randvar/JJ.mat')['JJ_list'].ravel() 
+                JJ = JJ_list[(self.it-1)*self.N:(self.it-1)*self.N+self.N] -1 # note: -1 to adjust to python indices
+            else:
+                JJ = np.random.permutation(self.N) # random permutation of the nodes
+            
+            #np.save('Z_test.npy', self.Z)
+            #np.save('A_test.npy', self.A)
             self.Z, self.logP_A, self.logP_Z, _, _ = self.gibbs_sample_Z(self.Z, JJ, comp=[], Force=[]) # input: Z, A, eta0, alpha, N. Output: Z, logP_A, logP_Z
             if self.splitmerge:
                 for _ in range(self.maxiter_splitmerge):
@@ -174,9 +211,9 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
                 self.sample['iter'].append(self.it) 
                 #self.sample['Z'].append(self.Z) 
                 self.sample['noc'].append(self.noc)
-                self.sample['logP_A'].append(self.logP_A) # logP(A|Z) (log likelihood)
-                self.sample['logP_Z'].append(self.logP_Z) # logP(Z) (log prior)
-                self.sample['logP'].append(logP) # logP(Z,A) (log likelihood + log prior)
+                self.sample['logP_A'].append(self.logP_A) # logP_A|Z (log likelihood)
+                self.sample['logP_Z'].append(self.logP_Z) # logP_Z (log prior)
+                self.sample['logP'].append(logP) # logP_Z|A (log likelihood + log prior)
                 #self.sample['eta'].append(self.eta) 
                 #self.sample['alpha'].append(self.alpha) 
                 #self.sample['eta0'].append(self.eta0)
@@ -213,6 +250,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
         print('%12.0f | %12.4e | %12.4e | %12.0f | %12.4f ' % (self.it, logP, dlogP/abs(logP), self.noc, elapsed_time))
 
 ############################################################### Gibbs sampler ###############################################################
+    #@profile # uncomment when using lineprofiler
     def gibbs_sample_Z(self, Z, JJ, comp, Force):
         logQ_trans = 0 # log of transition probability of Z (used for split-merge MH sampler step)
         if self.model_type == 'parametric':
@@ -232,32 +270,39 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
             # Remove effect of node i in partion, i.e. Z[:,i]
             self.sumZ -= Z[:, i]
             # Compute link contribution of node i to log likelihood
-            if self.dataset == 'hcp':
-                ZAi = np.stack([(As[i,:] @ Z.T) for As in self.A], axis=2).transpose(1,0,2)
+            if self.dataset == 'hcp_article':
+                ZAi = np.stack([(As[i,:] @ Z.T) for As in self.A], axis=2).transpose(1,0,2) # NEW
             else:
                 ZAi = np.stack([Z @ self.A[:, i, s] for s in range(self.S)], axis=1)
                 ZAi = ZAi[:, np.newaxis, :]
-                            
+                
+            #ZAi = np.stack([(SparseRowIndexer(As)[[i]] @ Z.T) for As in self.A], axis=2).transpose(1,0,2)
+            
             d = np.nonzero(Z[:, i])[0] # find non-empty cluster for node i (i.e. find which cluster node i is assigned to)
-            if len(d) > 0: # if d is not an empty list (there exists non-empty cluster exist for node i
+            if len(d) > 0: # if d is not an empty list (there exists non-empty cluster exist for node i (not really neccessary to make the if statement, since the node will always be assigned to a cluster)
                 n_link[:, d, :] -= ZAi # removing link contribution of node i: (number of links between clusters and non-empty cluster d) minus (sum of links between node i and other nodes in respective cluster/block for subject s)
                 n_link[d, :, :] = np.transpose(n_link[:, d, :], (1,0,2)) # making sure n_link is symmetric
                 Z[:, i] = 0 # remove cluster assignment for node i (i.e. remove it from cluster d)
+            #else:
+                #print('d is an empty list')
 
             ######### NOT in split merge sampler step (comp is empty) #########
             if len(comp) == 0: # if no components are given (i.e. if we are not in the split-merge MH sampler step)
                 if self.sumZ[d] == 0: #if sum of nodes in cluster d is 0 then it means that node i was the only node in cluster d ("singleton cluster") and since we removed node i's contibution to sumZ, the cluster is now empty
+                    #print('Removing singleton cluster')
                     v = np.arange(self.noc) 
                     v = v[v != d] # removing singleton cluster
                     d = [] 
                     self.noc -= 1 # reducing number of clusters by 1 
                     P = csr_matrix((np.ones(self.noc),(np.arange(self.noc),v)), shape=(self.noc, self.noc+1))#.toarray() # NEW (changed from csc to csr)
+                    #Z = P @ Z
                     Z = spdenmatmul(P,Z) # NEW
                     ZAi = ZAi[v, :, :]
                     self.sumZ = self.sumZ[v]
                     n_link = n_link[v][:, v, :]
                     mult_eval = mult_eval[v][:, v]
- 
+                #else:
+                    #print('No singleton cluster')
                 # Calculate probability for existing communities as well as proposal cluster
                 mult_eval[:,d] = self.multinomialln(n_link[:,d,:]) # updating likelihood given that node i is NOT in cluster d - i.e. compute multinomial likelihood for number of links between cluster d and other clusters for each subject  
                 mult_eval[d,:] = mult_eval[:,d].T
@@ -265,8 +310,10 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
                 if self.model_type == 'nonparametric':
                     mult_eval_di = self.multinomialln(np.concatenate((n_link + ZAi, ZAi + self.eta0), axis=1)) # (note we use broadcasting here to add the contribution of node i to each cluster)
                     logQ = np.append(np.sum(mult_eval_di[:, :self.noc], axis=0), np.sum(mult_eval_di[:, self.noc], axis=0) - self.noc * const).T - np.append(sum_mult_eval_dnoi, 0) # note that prior is not included here since its just constant
+                    #logQ = np.append(np.sum(mult_eval_di[:, :self.noc], axis=0), np.sum(mult_eval_di[:, self.noc], axis=0)).T - np.append(sum_mult_eval_dnoi, 0) # TESTING (-self.noc * constant is also just constant terms)
                 else:
                     mult_eval_di = self.multinomialln(n_link + ZAi)
+                    #logQ = np.sum(mult_eval_di, axis=0) - sum_mult_eval_dnoi + gammaln(self.sumZ + 1 + self.alpha) - gammaln(self.sumZ + self.alpha)
                     logQ = np.sum(mult_eval_di, axis=0) - sum_mult_eval_dnoi # notice that the conditional prior is not included here, but instead implemented as weight 
                 
                 # Sample from posterior conditional
@@ -275,14 +322,20 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
                     weight = np.append(self.sumZ, self.alpha) # alpha is the weight for the CRP prior
                 else:
                     weight = self.sumZ + self.alpha # = gamma(self.sumZ + 1 + self.alpha)/gamma(self.sumZ + self.alpha)
+                    #weight = self.sumZ + self.alpha/self.noc
                     
                 #if self.unit_test:
                 #    self.unit_test_gibbs(logQ, weight, i)
                 
                 QQ = weight * QQ # compute true (weighted) pdf (weighted by the conditional prior)
-                randval = np.random.rand()
+                if self.matlab_compare:
+                    randval = randval_list[i]
+                else:
+                    randval = np.random.rand()
+
                 ind = np.argmax(randval < np.cumsum(QQ/np.sum(QQ)),axis=0) # generate random sample using cdf (inverse transform sampling)
                 if ind >= self.noc: # this part is only the case for CRP prior (if self.model_type == 'nonparametric')
+                        #print('ind>=noc') # actually it will just be ind == noc
                         # modifying shapes to include extra cluster
                         Z = np.concatenate((Z, np.zeros((1,self.N))), axis=0)
                         self.noc = Z.shape[0]
@@ -291,10 +344,13 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
                         mult_eval = np.concatenate((mult_eval, np.zeros((1, self.noc-1))), axis=0)
                         mult_eval = np.concatenate((mult_eval, np.zeros((self.noc, 1))), axis=1)
                         ZAi = np.concatenate((ZAi, np.zeros((1, 1, self.S))), axis=0)
-                        Z[ind, i] = 1 # updating partition: assigning node i to cluster with given index ind)
+                        Z[ind, i] = 1 # % updating partition: assigning node i to cluster with given index ind)
                         self.sumZ = np.append(self.sumZ, 0) # add zero nodes to the last cluster
-                        n_link[:, ind, :] = self.eta0.reshape(1, 1, -1)
-                        n_link[ind, :, :] = self.eta0.reshape(1, 1, -1)
+                        #for s in range(self.S):
+                        #    n_link[:, ind, s] = self.eta0[s]
+                        #    n_link[ind, :, s] = self.eta0[s]
+                        n_link[:, ind, :] = self.eta0.reshape(1, 1, -1)# alternative
+                        n_link[ind, :, :] = self.eta0.reshape(1, 1, -1)# alternative
                         mult_eval[:, ind] = 0 
                         mult_eval[ind, :] = 0
                         mult_eval_di = np.append(mult_eval_di[:, ind], const).T
@@ -304,7 +360,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
                     mult_eval_di = mult_eval_di[:, ind]
                     
             else: ######### In split merge sampler step (comp is NOT empty meaning that the Gibbs sampling will be restricted to the given clusters in comp)!!! #########
-                # Calculate probability for existing communities as well as proposal cluster (only for non-parametric model) - only changes for lines where sum_mult_eval_dnoi and mult_eval_di are computed
+                # Calculate probability for existing communities as well as proposal cluster (only for non-parametric model) - only changes for lines for computing sum_mult_eval_dnoi andd mult_eval_di
                 mult_eval[:,d] = self.multinomialln(n_link[:,d,:]) # updating likelihood given that node i is NOT in cluster d - i.e. compute multinomial likelihood for number of links between cluster d and other clusters for each subject                 
                 mult_eval[d,:] = mult_eval[:,d].T
                 sum_mult_eval_dnoi = np.sum(mult_eval[:, comp], axis=0)
@@ -339,6 +395,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
             
             # Remove empty clusters
             if np.any(self.sumZ == 0): # if any empty clusters exists
+                print('Removing empty clusters') # TESTING
                 d = np.nonzero(self.sumZ == 0)[0] # find empty cluster
                 if len(comp) > 0:
                     ind_d = np.nonzero(d < comp)[0] # find index of empty cluster in comp
@@ -346,8 +403,9 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
                 v = np.arange(self.noc)
                 v = v[v != d]
                 self.noc -= len(d)
-                P = csr_matrix((np.ones(self.noc),(np.arange(self.noc), v)), shape=(self.noc, self.noc+1))
-                Z = spdenmatmul(P,Z)
+                P = csr_matrix((np.ones(self.noc),(np.arange(self.noc), v)), shape=(self.noc, self.noc+1))#.toarray() # NEW (changed from csc to csr)
+                #Z = P @ Z
+                Z = spdenmatmul(P,Z) # NEW
                 self.sumZ = self.sumZ[v]
                 n_link = n_link[v][:,v,:]
                 mult_eval = mult_eval[v][:,v]                
@@ -358,6 +416,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
             constZ = np.sum(gammaln(self.sumZ))
             logP_Z = self.noc * np.log(self.alpha) + constZ - gammaln(self.N + self.alpha) + gammaln(self.alpha)
         else:
+            #logP_Z = gammaln(self.noc * self.alpha) - gammaln(self.noc * self.alpha + self.N) - self.noc * gammaln(self.alpha) + np.sum(gammaln(self.sumZ + self.alpha))
             logP_Z = gammaln(self.alpha) - gammaln(self.alpha + self.N) - self.noc * gammaln(self.alpha/self.noc) + np.sum(gammaln(self.sumZ + self.alpha/self.noc))
 
         return Z, logP_A, logP_Z, logQ_trans, comp
@@ -368,6 +427,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
 # MH sampler for alpha
 # MH sampler for eta0
 
+# need to update Gibbs sampler to handle Force, comp, logQ_trans and take different Z and JJ as input
     def splitmerge_sample_Z(self, Z, logP_A, logP_Z):
         self.noc, self.N = Z.shape # number of clusters and number of nodes
         # choose two random nodes
@@ -458,12 +518,19 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
 
     def sample_alpha(self): # MH sampler for alpha
         # sample hyperparameter: "concentration parameter" / "rate of generating new clusters" used in CRP dist., imposes improper uniform prior, Metropolis Hastings
+        if self.matlab_compare:
+            randnalpha_list = scipy.io.loadmat('matlab_randvar/randnalpha.mat')['randnalpha_list'].ravel() # TESTING
+            randalpha_list = scipy.io.loadmat('matlab_randvar/randalpha.mat')['randalpha_list'].ravel() # TESTING
+        
         if self.model_type == 'nonparametric':
             constZ = np.sum(gammaln(self.sumZ))
         
         accept = 0
         for i in range(self.maxiter_alpha):
-            randnalpha = np.random.randn() # Normally distributed random variable
+            if self.matlab_compare:
+                randnalpha = randnalpha_list[i]
+            else: 
+                randnalpha = np.random.randn() # Normally distributed random variable
             alpha_new = np.exp(np.log(self.alpha) + 0.1 * randnalpha)  # symmetric proposal distribution in log-domain (use change of variable in acceptance rate alpha_new/alpha)
             if self.model_type == 'nonparametric':
                 logP_Z_new = self.noc * np.log(alpha_new) + constZ - gammaln(self.N + alpha_new) + gammaln(alpha_new)
@@ -473,7 +540,10 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
             #if self.unit_test:
             #    self.unit_test_MH_alpha(alpha_new=alpha_new, logP_Z_new=logP_Z_new, logP_Z=self.logP_Z)
             
-            randalpha = np.random.rand()
+            if self.matlab_compare:
+                randalpha = randalpha_list[i]
+            else: 
+                randalpha = np.random.rand()
             if randalpha < alpha_new / self.alpha * np.exp(logP_Z_new - self.logP_Z):  # if u_k < acceptance probability A
                 self.alpha = alpha_new
                 self.logP_Z = logP_Z_new
@@ -483,13 +553,22 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
 
 
     def sample_eta0(self): # MH sampler for eta0
+        if self.matlab_compare:
+            randneta0_list = scipy.io.loadmat('matlab_randvar/randneta0.mat')['randneta0_list'].ravel() # TESTING
+            randeta0_list = scipy.io.loadmat('matlab_randvar/randeta0.mat')['randeta0_list'].ravel() # TESTING
+        
         n_link_noeta0 = self.compute_n_link(Z=self.Z, noc=self.noc, add_eta0=False, eta0=None)
         n_link = n_link_noeta0 + self.eta0
- 
+        #const = self.multinomialln(self.eta0)
+        #self.logP_A = np.triu(self.multinomialln(n_link)).sum() - self.noc*(self.noc+1)/2 * const
+            
         accept = 0
         for s in range(self.S):
             for i in range(self.maxiter_eta0):
-                randneta0 = np.random.randn() # Normally distributed random variable
+                if self.matlab_compare:
+                    randneta0 = randneta0_list[i] # TESTING
+                else:
+                    randneta0 = np.random.randn() # Normally distributed random variable
                 # generate candidate sample eta0 by adding noise (en from standard deviation) to current eta0
                 eta_new = np.exp(np.log(self.eta0[s]) + 0.1 * randneta0)  # symmetric proposal distribution in log-domain (use change of variable in acceptance rate alpha_new/alpha)
                 eta0_new = self.eta0.copy()
@@ -503,7 +582,10 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
                 #    self.unit_test_MH_eta0(eta0_new = eta0_new, logP_A_new = logP_A_new, logP_A = self.logP_A)
                 
                 # randeta0 is u_k
-                randeta0 = np.random.rand()
+                if self.matlab_compare:
+                    randeta0 = randeta0_list[i]
+                else:
+                    randeta0 = np.random.rand()
                 if randeta0 < (eta_new/self.eta0[s]) * np.exp(logP_A_new - self.logP_A): # r_p = logP_A_new - self.logP_A
                     self.eta0[s] = eta_new
                     self.logP_A = logP_A_new
@@ -513,36 +595,77 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
         #return logP, eta0
 
 
-############################################################### Data processing functions ###############################################################    
+############################################################### Data processing functions ###############################################################
     def load_data(self):
+            data_path = os.path.join(self.main_dir, 'data/'+self.dataset)
+            if self.dataset == 'synthetic':
+                if self.matlab_compare:
+                    A_dict = scipy.io.loadmat('matlab_randvar/A.mat')
+                    self.A = A_dict['A']
+                else:
+                    #self.A = generate_syndata(self.Nc, self.K, self.S1, self.S2)
+                    filename = 'A_'+str(self.N)+'_'+str(self.K)+'_'+str(self.S1)+'_'+str(self.S2)+'_'+str(self.Nc_type)+'_'+str(self.eta_similarity)+'.npy'
+                    self.A = np.load(os.path.join(data_path, filename))
+            elif self.dataset == 'hcp' or self.dataset == 'decnef':
+                folder_name = self.atlas_name+str(self.n_rois)
+                folder_path = os.path.join(data_path, folder_name)
+                if self.threshold_annealing: # incresing graph density over iterations
+                    self.graph_count += 1
+                    print('Annealing threshold: graph no. '+str(self.graph_count))
+                    filename = 'A'+str(self.graph_count)+'_vals_list.npy'
+                    A_vals_list = np.load(os.path.join(folder_path, filename))
+                else: # using fixed graph density (most dense graph)
+                    print('No threshold annnealing: Using fixed graph density (most dense graph)')
+                    filename = 'A'+str(self.n_graphs)+'_vals_list.npy' # use most dense graph (A4_vals_list.npy)
+                    A_vals_list = np.load(os.path.join(folder_path, filename))
+                self.A = compute_A(A_vals_list, self.n_rois)
+            else:
+                print('Unknown dataset')
+    
+    def load_articledata(self):
         data_path = os.path.join(self.main_dir, 'data/'+self.dataset)
-        if self.dataset == 'synthetic':
+        if self.dataset == 'synthetic_article':
             filename = 'A_'+str(self.K)+'_'+str(self.S1)+'_'+str(self.S2)+'_'+str(self.Nc_type)+'_{:.3g}'.format(self.alpha)
             self.A = np.load(os.path.join(data_path, filename+'.npy'))
-        elif self.dataset == 'hcp':
+        elif self.dataset == 'hcp_article':
+            #print('OBS! USING SUBSET OF DATA')
+            #filename_list = ['fmri_sparse1.npz','dmri_sparse1.npz'] # subset
             filename_list = ['fmri_sparse1.npz', 'fmri_sparse2.npz', 'fmri_sparse3.npz', 'fmri_sparse4.npz', 'fmri_sparse5.npz', 
                             'dmri_sparse1.npz', 'dmri_sparse2.npz', 'dmri_sparse3.npz', 'dmri_sparse4.npz', 'dmri_sparse5.npz']
             self.A = []
             for filename in filename_list:
+                #print('Loading '+filename)
                 graph = load_npz(os.path.join(data_path, filename)).astype(dtype=np.int32) # single graph
                 graph_sym = triu(graph,1)+triu(graph,1).T
                 self.A.append(graph_sym)
+            #A_fmri = load_npz(os.path.join(data_path,'fmri_sparse.npz')).tocsr().astype(dtype=np.int32) #.toarray() # loading sparse COO matrix and transforming to dense
+            #A_dmri = load_npz(os.path.join(data_path,'dmri_sparse.npz')).tocsr().astype(dtype=np.int32) #.toarray() # loading sparse COO matrix and transforming to dense
+            #self.A = np.stack([A_fmri, A_fmri, A_fmri, A_fmri, A_fmri,
+            #                   A_dmri, A_dmri, A_dmri, A_dmri, A_dmri], axis=-1)
+            #self.A = [A_fmri, A_fmri, A_fmri, A_fmri, A_fmri,
+            #          A_dmri, A_dmri, A_dmri, A_dmri, A_dmri]
         else:
             print('Unknown dataset')
             
 ############################################################### Model evaluation functions ###############################################################
 
     def compute_n_link(self, Z, noc, add_eta0, eta0):
-        if self.dataset == 'hcp':
+        #n_link = np.stack([Z @ self.A[:, :, s] @ Z.T for s in range(self.S)],axis=2) # used for stacked 3D array of dense matric
+        #n_link = np.stack([Z @ As @ Z.T for As in self.A],axis=2) # used for list of scipy sparse csr matrix
+        if self.dataset == 'hcp_article':
             n_link = np.stack([Z @ spdenmatmul(As, Z.T) for As in self.A],axis=2) # used for list of scipy sparse csr matrix (NEW numba version)
-        elif self.dataset == 'synthetic':
+        elif self.dataset == 'synthetic_article':
             n_link = np.stack([Z @ self.A[:, :, s] @ Z.T for s in range(self.S)],axis=2) # used for stacked 3D array of dense matric
+        #n_link = (Z[None] @ self.A.T @ Z.T[None]).T # used for sparse 3D COO matrix
         if add_eta0 == False:
             eta0 = np.zeros(self.S)
+        #else: 
+        #    print('add_eta0', add_eta0)
+        #n_link = n_link - 0.5 * np.eye(noc)*n_link + eta0[:,None,None] # doesn't work
         n_link = np.stack([n_link[:, :, s] - 0.5 * np.diag(np.diag(n_link[:, :, s])) + eta0[s] for s in range(self.S)], axis=2) # old line that works (can probably be optimized)
         return n_link
      
-    def multinomialln(self, x): # logbeta func 
+    def multinomialln(self, x): # maybe better to call it logbeta func 
         # Multinomial distribution (log probability)
         return np.sum(gammaln(x), axis=-1) - gammaln(np.sum(x, axis=-1))
 
@@ -553,6 +676,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
 
     def evalProbs(self, Z, eta0, alpha):
         # used to evaluate the likelihood and prior probabilities of the model in unit tests
+        
         sumZ = np.sum(Z, axis=1) # number of nodes in each cluster
         noc = Z.shape[0] # number of clusters
         n_link = self.compute_n_link(Z=Z, noc=noc, add_eta0=True, eta0=eta0)
