@@ -1,4 +1,4 @@
-from article_helper_functions import *
+from helper_functions import *
 import os
 
 os.environ["OMP_NUM_THREADS"] = "5"  # set number of threads to 5
@@ -13,7 +13,7 @@ for i in range(len(dmri_filenames)):
     Glasser_A_fmri = compute_Glasser_A(fmri_filenames[i])
 '''
 # choose experiment
-dataset = 'hcp_article'
+dataset = 'hcp'
 top_dir = os.path.join('results', dataset)
 main_dir = os.getcwd()
 df_exp = get_exp_overview(top_dir)
@@ -24,7 +24,7 @@ noc_list = [2,3,4,25,50,100] # 2, 3, 4, 25, 50, 100
 # computing node labels using (cluster assignments) from partition
 filenames = ['fmri_sparse1.npz', 'fmri_sparse2.npz','fmri_sparse3.npz','fmri_sparse4.npz','fmri_sparse5.npz',
             'dmri_sparse1.npz', 'dmri_sparse2.npz','dmri_sparse3.npz','dmri_sparse4.npz','dmri_sparse5.npz']
-data_path = os.path.join(main_dir, 'data','hcp_article')
+data_path = os.path.join(main_dir, 'data','hcp')
 for noc in noc_list:
     exp_folder = get_best_run(df=df_sorted, noc=noc) # experiment visualized is the one with highest MAP estimate across random runs
 
@@ -33,7 +33,7 @@ for noc in noc_list:
         maxiter_gibbs = 100
     else: # also including where noc=100 (they only ran 30 iterations)
         maxiter_gibbs = 30
-    model_sample = np.load(os.path.join(main_dir, 'results/hcp_article/'+exp_folder+'/model_sample'+str(maxiter_gibbs)+'.npy'), allow_pickle=True).item()
+    model_sample = np.load(os.path.join(main_dir, 'results/hcp/'+exp_folder+'/model_sample'+str(maxiter_gibbs)+'.npy'), allow_pickle=True).item()
 
     MAP_sample = model_sample['MAP']
     Z = MAP_sample['Z'] # partition matrix
