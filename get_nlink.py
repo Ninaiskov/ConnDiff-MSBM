@@ -2,12 +2,12 @@ import os
 import numpy as np
 from numba import njit, prange
 from scipy.sparse import load_npz, triu
-from article_helper_functions import get_exp_overview, get_best_run
+from helper_functions import get_exp_overview, get_best_run
 
 os.environ["OMP_NUM_THREADS"] = "5"  # set number of threads
 
 main_dir = '/work3/s174162/speciale'
-dataset = 'hcp_article'
+dataset = 'hcp'
 data_path = os.path.join(main_dir, 'data/'+dataset)
 
 ## numba code for matrix multiplication between parallel csr sparse matrix A and dense matrix B
@@ -27,8 +27,8 @@ def spmatmul(A, iA, jA, B, out):
             for k in range(out.shape[1]):
                 out[i, k] += A[j] * B[jA[j], k]
                 
-def load_articledata(main_dir, dataset):
-    print('loading article data..')
+def load_data(main_dir, dataset):
+    print('loading data..')
     data_path = os.path.join(main_dir, 'data/'+dataset)
     filename_list = ['fmri_sparse1.npz', 'fmri_sparse2.npz', 'fmri_sparse3.npz', 'fmri_sparse4.npz', 'fmri_sparse5.npz', 
                     'dmri_sparse1.npz', 'dmri_sparse2.npz', 'dmri_sparse3.npz', 'dmri_sparse4.npz', 'dmri_sparse5.npz']
@@ -62,12 +62,12 @@ for noc in [4]: #noc = 25 # 2, 3, 4, 25, 50, 100
         maxiter_gibbs = 100
     else: # also including where noc=100 (they only ran 30 iterations)
         maxiter_gibbs = 30
-    model_sample = np.load(os.path.join(main_dir, 'results/hcp_article/'+exp_folder+'/model_sample'+str(maxiter_gibbs)+'.npy'), allow_pickle=True).item()
+    model_sample = np.load(os.path.join(main_dir, 'results/hcp/'+exp_folder+'/model_sample'+str(maxiter_gibbs)+'.npy'), allow_pickle=True).item()
     model_sample.keys()
 
     MAP_sample = model_sample['MAP']
     Z = MAP_sample['Z']
     eta0 = MAP_sample['eta0']
-    A = load_articledata(main_dir=main_dir, dataset=dataset)
+    A = load_data(main_dir=main_dir, dataset=dataset)
     n_link = compute_n_link(Z=Z, A=A, eta0=eta0)
     np.save(os.path.join(data_path,'n_link'+str(noc)+'.npy'), n_link)
