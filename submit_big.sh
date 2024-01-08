@@ -14,4 +14,4 @@
 source ~/miniconda3/bin/activate
 conda activate speciale
 
-python3 get_newgraphs.py
+python3 get_Glassergraphs.py
