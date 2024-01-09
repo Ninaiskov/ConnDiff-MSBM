@@ -4,7 +4,7 @@ The work showcase how MSBM can offer valuable insights to brain connectivity as 
 
 #### Framework illustration
 
-<img width="500" alt="MSBM" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/bb37427d-9c2f-4314-a682-1fde41611626">
+<img width="800" alt="MSBM" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/bb37427d-9c2f-4314-a682-1fde41611626">
 
 ### Data
 Data used from Human Connectome Project (HCP) and synthetic data is located in data folder.
