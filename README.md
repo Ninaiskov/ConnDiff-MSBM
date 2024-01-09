@@ -19,7 +19,7 @@ Brainmap:
 
 <img width="400" alt="brainmap" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/5ee9ac9e-4a01-4a11-8325-cb6816656be3">
 
-Connectivity map (red = functional conn., blue = structural conn.):
+Connectivity map (Probability of link between clusters, where red = functional conn., blue = structural conn.)
 
 <img width="494" alt="connmap" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/f3ef7675-6d0a-43f8-b2fd-84c6ee6ed744">
 
