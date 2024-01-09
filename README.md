@@ -5,7 +5,7 @@ Code for Network Neuroscience article: "Discovering Prominent Differences in Str
 Data used from Human Connectome Project (HCP) and synthetic data is located in data folder.
 
 ### Results
-Result files 'model_sample.npy' including MAP partition matrix Z are located in results folder under respective experiment subfolder.
+Result files 'model_sample.npy' including MAP partition matrix Z are located in results folder under respective experiment subfolder (only results files for best runs for HCP data are uploaded)
 
 ### Scripts
 - main.py: Main script for defining parameters and running model
