@@ -3,7 +3,7 @@ Code for Network Neuroscience article: "Discovering Prominent Differences in Str
 The work showcase how MSBM can offer valuable insights to brain connectivity as well as many other potential applications where differences across graph-data are of interest.
 
 Framework illustration:
-<img width="885" alt="MSBM" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/bb37427d-9c2f-4314-a682-1fde41611626">
+<img width="500" alt="MSBM" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/bb37427d-9c2f-4314-a682-1fde41611626">
 
 ### Data
 Data used from Human Connectome Project (HCP) and synthetic data is located in data folder.
@@ -12,10 +12,10 @@ Data used from Human Connectome Project (HCP) and synthetic data is located in d
 Result files 'model_sample.npy' including MAP partition matrix Z are located in results folder under respective experiment subfolder (only results files for best runs for HCP data are uploaded)
 Examples of results for 25 clusters:
 Brainmap:
-<img width="400" alt="brainmap" src="[https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/bb37427d-9c2f-4314-a682-1fde41611626](https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/8f78b617-2057-4b2b-8c21-d6263ed7ad42)">
+<img width="400" alt="brainmap" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/5ee9ac9e-4a01-4a11-8325-cb6816656be3">
 
 Connectivity map (red = functional conn., blue = structural conn.)
-![image](https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/03e23d70-2970-4c3b-88ed-1c0f31b9c88e)
+<img width="494" alt="connmap" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/f3ef7675-6d0a-43f8-b2fd-84c6ee6ed744">
 
 
 ### Scripts
