@@ -8,7 +8,7 @@ This work showcase how MSBM can offer valuable insights to brain connectivity as
 <img width="800" alt="MSBM" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/bb37427d-9c2f-4314-a682-1fde41611626">
 
 ### Data
-Data used from Human Connectome Project (HCP) and synthetic data is located in data folder.
+Data used is open-access neuroimaging dataset (fMRI and dMRI scans) from Human Connectome Project (HCP) and synthetic data. Synthetic data is located in data folder.
 
 ### Results
 Result files 'model_sample.npy' including MAP partition matrix Z are located in results folder under respective experiment subfolder (only results files for best runs for HCP data are uploaded)
