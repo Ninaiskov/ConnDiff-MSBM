@@ -2,7 +2,8 @@
 Code for Network Neuroscience article: "Discovering Prominent Differences in Structural and Functional Connectomes Using the Multinomial Stochastic Block Model"
 
 Framework illustration:
-![MSBM](https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/0cf95227-6e5e-494a-8aae-d999f6081dbd)
+<img width="885" alt="MSBM" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/bb37427d-9c2f-4314-a682-1fde41611626">
+
 
 ### Data
 Data used from Human Connectome Project (HCP) and synthetic data is located in data folder.
