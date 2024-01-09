@@ -13,7 +13,7 @@ Data used from Human Connectome Project (HCP) and synthetic data is located in d
 ### Results
 Result files 'model_sample.npy' including MAP partition matrix Z are located in results folder under respective experiment subfolder (only results files for best runs for HCP data are uploaded)
 
-#### Examples of results for 25 clusters
+#### Examples of HCP results for 25 clusters
 
 Brainmap:
 
