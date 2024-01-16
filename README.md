@@ -17,11 +17,13 @@ Result files 'model_sample.npy' including MAP partition matrix Z are located in 
 
 Brainmap:
 
-<img width="400" alt="brainmap" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/5ee9ac9e-4a01-4a11-8325-cb6816656be3">
+![MSBM](https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/9f1c95c5-3046-4394-aeba-55afbd148bac)
+
 
 Connectivity map (Probability of link between clusters, where red = functional conn., blue = structural conn.)
 
-<img width="494" alt="connmap" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/f3ef7675-6d0a-43f8-b2fd-84c6ee6ed744">
+![K25](https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/3ba1e1e0-811b-432c-a812-756da4c9a703)
+
 
 
 ### Scripts
