@@ -5,7 +5,8 @@ This work showcase how MSBM can offer valuable insights to brain connectivity as
 
 #### Framework illustration
 
-<img width="800" alt="MSBM" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/bb37427d-9c2f-4314-a682-1fde41611626">
+![MSBM](https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/f5d3b453-899d-44bc-bebb-e5b0cb4a28c6)
+
 
 ### Data
 Data used is open-access neuroimaging dataset (fMRI and dMRI scans) from Human Connectome Project (HCP) and synthetic data. Synthetic data is located in data folder.
@@ -17,12 +18,13 @@ Result files 'model_sample.npy' including MAP partition matrix Z are located in 
 
 Brainmap:
 
-![MSBM](https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/9f1c95c5-3046-4394-aeba-55afbd148bac)
+<img width="195" alt="brainmap" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/567cb112-d386-4178-950f-91693cca2f94">
+
 
 
 Connectivity map (Probability of link between clusters, where red = functional conn., blue = structural conn.)
 
-![K25](https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/3ba1e1e0-811b-432c-a812-756da4c9a703)
+![K25](https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/fd23dc1a-8f27-4ca0-84ef-82faffafa262)
 
 
 
