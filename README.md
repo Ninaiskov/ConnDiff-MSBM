@@ -24,7 +24,10 @@ Brainmap:
 
 Connectivity map (Probability of link between clusters, where red = functional conn., blue = structural conn.)
 
-![K25](https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/fd23dc1a-8f27-4ca0-84ef-82faffafa262)
+<img width="600" alt="K25" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/d6995391-8f3a-4541-9992-63aee014b3e8">
+
+
+
 
 
 
