@@ -18,7 +18,7 @@ Result files 'model_sample.npy' including MAP partition matrix Z are located in 
 
 Brainmap:
 
-<img width="195" alt="brainmap" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/567cb112-d386-4178-950f-91693cca2f94">
+<img width="300" alt="brainmap" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/567cb112-d386-4178-950f-91693cca2f94">
 
 
 
