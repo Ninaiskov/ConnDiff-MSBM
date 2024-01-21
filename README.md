@@ -5,7 +5,8 @@ This work showcase how MSBM can offer valuable insights to brain connectivity as
 
 #### Framework illustration
 
-<img width="723" alt="MSBM" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/a5b8e985-8b06-496c-a379-95a7d671ad72">
+<img width="856" alt="MSBM" src="https://github.com/Ninaiskov/ConnDiff-MSBM/assets/67420369/fc04f74f-e494-444d-a108-64bf3cf0227f">
+
 
 
 ### Data
