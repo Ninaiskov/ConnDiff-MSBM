@@ -43,4 +43,21 @@ Connectivity map (Probability of link between clusters, where red = functional c
 - submit_big.sh: Submit single batchjobs to BIG cluster
 - submit_hpc.sh: Submit single batchjobs to HPC cluster
 - visualize.ipynb: Visualize data and model outputs
-- speciale.yml: Conda environment
+- speciale.yml: Conda environment requirements
+
+
+### Setup and run
+
+1. Clone the repository
+2. Create a conda environment from the speciale.yml file by running:
+``` 
+conda env create -f speciale.yml
+```
+3. Activate the environment:
+```
+conda activate speciale
+```
+4. Run the main.py script to run the model:
+```
+python main.py
+```
