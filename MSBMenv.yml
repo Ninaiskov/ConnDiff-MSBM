@@ -1,4 +1,4 @@
-name: speciale
+name: MSBMenv
 channels:
   - conda-forge
   - defaults
@@ -285,4 +285,4 @@ dependencies:
       - starlette==0.26.1
       - uuid==1.30
       - uvicorn==0.22.0
-prefix: /zhome/8a/1/127380/miniconda3/envs/speciale
+prefix: /zhome/8a/1/127380/miniconda3/envs/MSBMenv
