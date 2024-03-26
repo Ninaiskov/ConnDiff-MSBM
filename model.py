@@ -174,6 +174,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
             
             # Sample eta0
             self.sample_eta0() # input: A, Z, eta0. Output: logP_A, eta0
+            np.save('eta0_out.npy', self.eta0)
             
             # Calculate eta (we compute expected value of posterior of eta)
             self.calculate_eta() # input: Z, eta0. Output: eta
@@ -244,7 +245,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
         self.sumZ = np.sum(Z, axis=1) # number of nodes in each cluster
         self.noc = Z.shape[0] # number of clusters
     
-        n_link = self.compute_n_link(Z=Z, noc=self.noc, add_eta0=True, eta0=self.eta0) # sufficient statistic
+        n_link = self.compute_n_link(Z=Z, add_eta0=True, eta0=self.eta0) # sufficient statistic
         
         mult_eval = self.multinomialln(n_link) # compute (multinomial) log likelihood of number of links between clusters, log Beta(nlink+eta0)
         for i in JJ: # for each node (in random permutated order)
@@ -517,13 +518,33 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
 
         # print('accepted ' + str(accept) + ' out of ' + str(self.maxiter_gibbs) + ' samples for alpha')
 
+    def sample_eta0_new(self):
+        
+        n_link_noeta0 = self.compute_n_link(Z=self.Z, add_eta0=False, eta0=None)
+        for _ in range(self.maxiter_eta0):
+            randn_eta0 = np.random.randn(self.S)
+            eta0_new = np.exp(np.log(self.eta0) + 0.1 * randn_eta0)
+            const_new = self.multinomialln(eta0_new)
+            n_link_new = n_link_noeta0 + eta0_new[None,None,:]
+            logP_A_new = np.sum(np.triu(self.multinomialln(n_link_new))) - self.noc*(self.noc+1)/2 * const_new
+            
+            rand_eta0 = np.random.rand(self.S)
+            accept = rand_eta0 < (eta0_new/self.eta0) * np.exp(logP_A_new - self.logP_A) # r_p = logP_A_new - self.logP_A
+            self.eta0[accept] = eta0_new[accept]
+            self.logP_A = logP_A_new
 
     def sample_eta0(self): # MH sampler for eta0
+        np.save('A.npy',self.A)
+        np.save('Z.npy',self.Z)
+        np.save('eta0_in.npy',self.eta0)
+        np.save('logP_A.npy',self.logP_A)
+        
         if self.matlab_compare:
             randneta0_list = scipy.io.loadmat('matlab_randvar/randneta0.mat')['randneta0_list'].ravel() # TESTING
             randeta0_list = scipy.io.loadmat('matlab_randvar/randeta0.mat')['randeta0_list'].ravel() # TESTING
         
-        n_link_noeta0 = self.compute_n_link(Z=self.Z, noc=self.noc, add_eta0=False, eta0=None)
+        n_link_noeta0 = self.compute_n_link(Z=self.Z, add_eta0=False, eta0=None)
+        np.save('n_link_noeta0.npy',n_link_noeta0)
         n_link = n_link_noeta0 + self.eta0
         #const = self.multinomialln(self.eta0)
         #self.logP_A = np.triu(self.multinomialln(n_link)).sum() - self.noc*(self.noc+1)/2 * const
@@ -534,12 +555,14 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
                 if self.matlab_compare:
                     randneta0 = randneta0_list[i] # TESTING
                 else:
-                    randneta0 = np.random.randn() # Normally distributed random variable
+                    randneta0 = 0.4 #np.random.randn() # Normally distributed random variable
+                    np.save('randneta0.npy',randneta0)
                 # generate candidate sample eta0 by adding noise (en from standard deviation) to current eta0
                 eta_new = np.exp(np.log(self.eta0[s]) + 0.1 * randneta0)  # symmetric proposal distribution in log-domain (use change of variable in acceptance rate alpha_new/alpha)
                 eta0_new = self.eta0.copy()
                 eta0_new[s] = eta_new
                 const_new = self.multinomialln(eta0_new)
+                np.save('const_new.npy',self.eta0)
                 n_link_new = n_link.copy()
                 n_link_new[:,:,s] = n_link_noeta0[:,:,s] + eta_new
                 logP_A_new = np.sum(np.triu(self.multinomialln(n_link_new))) - self.noc*(self.noc+1)/2 * const_new
@@ -551,7 +574,8 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
                 if self.matlab_compare:
                     randeta0 = randeta0_list[i]
                 else:
-                    randeta0 = np.random.rand()
+                    randeta0 = 0.8 #np.random.rand()
+                    np.save('randeta0.npy',randeta0)
                 if randeta0 < (eta_new/self.eta0[s]) * np.exp(logP_A_new - self.logP_A): # r_p = logP_A_new - self.logP_A
                     self.eta0[s] = eta_new
                     self.logP_A = logP_A_new
@@ -606,7 +630,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
             
 ############################################################### Model evaluation functions ###############################################################
 
-    def compute_n_link(self, Z, noc, add_eta0, eta0):
+    def compute_n_link(self, Z, add_eta0, eta0):
         #n_link = np.stack([Z @ self.A[:, :, s] @ Z.T for s in range(self.S)],axis=2) # used for stacked 3D array of dense matric
         #n_link = np.stack([Z @ As @ Z.T for As in self.A],axis=2) # used for list of scipy sparse csr matrix
         if self.dataset == 'hcp':
@@ -627,7 +651,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
         return np.sum(gammaln(x), axis=-1) - gammaln(np.sum(x, axis=-1))
 
     def calculate_eta(self):
-        n_link = self.compute_n_link(Z=self.Z, noc=self.noc, add_eta0=True, eta0=self.eta0)
+        n_link = self.compute_n_link(Z=self.Z, add_eta0=True, eta0=self.eta0)
         sum_n_link = np.sum(n_link, axis=2)
         self.eta = n_link/sum_n_link[:,:,np.newaxis]
 
@@ -636,7 +660,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
         
         sumZ = np.sum(Z, axis=1) # number of nodes in each cluster
         noc = Z.shape[0] # number of clusters
-        n_link = self.compute_n_link(Z=Z, noc=noc, add_eta0=True, eta0=eta0)
+        n_link = self.compute_n_link(Z=Z, add_eta0=True, eta0=eta0)
         
         mult_eval = self.multinomialln(n_link) # compute (multinomial) log likelihood of number of links between clusters 
         const = self.multinomialln(eta0)
