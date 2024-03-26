@@ -533,7 +533,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
             self.eta0[accept] = eta0_new[accept]
             self.logP_A = logP_A_new
     '''
-   def sample_eta0(self): # MH sampler for eta0
+    def sample_eta0(self): # MH sampler for eta0
         np.save('A.npy',self.A)
         np.save('Z.npy',self.Z)
         np.save('eta0_in.npy',self.eta0)
