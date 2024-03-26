@@ -517,7 +517,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
                 accept += 1
 
         # print('accepted ' + str(accept) + ' out of ' + str(self.maxiter_gibbs) + ' samples for alpha')
-
+    '''
     def sample_eta0_new(self):
         
         n_link_noeta0 = self.compute_n_link(Z=self.Z, add_eta0=False, eta0=None)
@@ -532,8 +532,8 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
             accept = rand_eta0 < (eta0_new/self.eta0) * np.exp(logP_A_new - self.logP_A) # r_p = logP_A_new - self.logP_A
             self.eta0[accept] = eta0_new[accept]
             self.logP_A = logP_A_new
-
-    def sample_eta0(self): # MH sampler for eta0
+    '''
+   def sample_eta0(self): # MH sampler for eta0
         np.save('A.npy',self.A)
         np.save('Z.npy',self.Z)
         np.save('eta0_in.npy',self.eta0)
