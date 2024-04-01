@@ -49,9 +49,10 @@ Connectivity map (Probability of link between clusters, where red = functional c
 ### Setup and run
 
 1. Clone the repository
-2. Create a conda environment from the MSBMenv.yml file by running:
+2. Create a conda environment from the MSBMenv.yml file
 ``` 
 conda env create -f MSBMenv.yml
+```
 and activate the environment 
 ```
 conda activate MSBMenv
