@@ -52,12 +52,17 @@ Connectivity map (Probability of link between clusters, where red = functional c
 2. Create a conda environment from the MSBMenv.yml file by running:
 ``` 
 conda env create -f MSBMenv.yml
-```
-3. Activate the environment:
+and activate the environment 
 ```
 conda activate MSBMenv
 ```
-4. Run the main.py script to run the model:
+
+Alternatively: install required packages using 
+```
+pip install -r requirements.txt
+```
+
+3. Run the main.py script to run the model:
 ```
 python main.py
 ```
