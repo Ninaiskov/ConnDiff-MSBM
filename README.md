@@ -44,6 +44,7 @@ Connectivity map (Probability of link between clusters, where red = functional c
 - submit_hpc.sh: Submit single batchjobs to HPC cluster
 - visualize.ipynb: Visualize data and model outputs
 - MSBMenv.yml: Conda environment requirements
+- requirements.txt: Python package requirements
 
 
 ### Setup and run
