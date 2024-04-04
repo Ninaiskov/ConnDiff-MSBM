@@ -75,7 +75,6 @@ if __name__ == '__main__':
     parser.add_argument('--S1', type=int, default=5, help='number of graphs of type 1 (synthetic data)')
     parser.add_argument('--S2', type=int, default=5, help='number of graphs of type 2 (synthetic data)')
     parser.add_argument('--Nc_type', type=str, default='unbalanced', help='balanced or unbalanced no. of nodes in each cluster')
-    parser.add_argument('--eta_similarity', type=str, default='comp_diff', help='same, comp_diff or part_diff (how similar eta1 and eta2 should be)') # only used in thesis
     parser.add_argument('--alpha', type=float, default=0, help='scaling parameter for similiarty between eta_p1 and eta_p2 (used for article synthetic data)') # only used in article
 
     # Model configuration.
