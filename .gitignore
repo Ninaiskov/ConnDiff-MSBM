@@ -1,12 +1,11 @@
 #.gitignore
-#__pychache__
-#.lprof
 
+# folders
 data
 figures
 results
-results
 
+# scripts
 run_mri_batchjobs.sh
 run_syn_batchjobs.sh
 submit_big.sh
