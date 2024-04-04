@@ -31,7 +31,7 @@ Connectivity map (Probability of link between clusters, where red = functional c
 
 
 
-### Scripts
+### Files
 - main.py: Main script for defining parameters and running model
 - model.py: Multinomial Stochastic Block Model (MSBM) class with Gibbs sampling inference
 - createGraphs.m: Generate adjacency matrices (graphs) from dMRI (structural) and fMRI (functional) images
