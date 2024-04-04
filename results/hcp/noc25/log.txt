@@ -1,8 +1,0 @@
-dataset: hcp
-exp_name: hcp_2023-10-24 19:49:31.137542
-model_type: parametric
-splitmerge: False
-noc: 25
-maxiter_gibbs: 100
-maxiter_eta0: 10
-maxiter_alpha: 100
