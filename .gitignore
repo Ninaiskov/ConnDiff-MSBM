@@ -1,10 +1,11 @@
-.gitignore
+#.gitignore
 #__pychache__
 #.lprof
 
 data
 figures
-results/hcp
+results
+results
 
 run_mri_batchjobs.sh
 run_syn_batchjobs.sh
