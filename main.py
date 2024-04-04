@@ -84,7 +84,7 @@ if __name__ == '__main__':
     parser.add_argument('--splitmerge', type=bool, default=True, help='use splitmerge for nonparametric model (True/False)')
     
     # Training configuration.
-    parser.add_argument('--maxiter_gibbs', type=int, default=100, help='max number of gibbs iterations')
+    parser.add_argument('--maxiter_gibbs', type=int, default=10, help='max number of gibbs iterations')
     parser.add_argument('--maxiter_eta0', type=int, default=10, help='max number of MH iterations for sampling eta0')
     parser.add_argument('--maxiter_alpha', type=int, default=100, help='max number of MH iterations for sampling alpha')
     parser.add_argument('--maxiter_splitmerge', type=int, default=10, help='max number of splitmerge iterations')
