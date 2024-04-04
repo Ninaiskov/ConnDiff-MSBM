@@ -9,7 +9,7 @@ This work showcase how MSBM can offer valuable insights to brain connectivity as
 
 
 ### Data
-Data used is open-access neuroimaging dataset (fMRI and dMRI scans) from Human Connectome Project (HCP) and synthetic data. Synthetic data is located in data folder.
+Data used is open-access neuroimaging dataset (fMRI and dMRI scans) from Human Connectome Project (HCP) and synthetically generated data
 
 ### Results
 Result files 'model_sample.npy' including MAP partition matrix Z are located in results folder under respective experiment subfolder (only results files for best runs for HCP data are uploaded)
@@ -38,12 +38,7 @@ Connectivity map (Probability of link between clusters, where red = functional c
 - get_Glassergraphs.py: Generate adjacency matrices (graphs) in Glasser atlas resolution
 - get_nlink.py: Compute number of links between each cluster pair (cluster-link density)
 - helper_functions.py: Helper functions (plotting functions etc.)
-- run_mri_batchjobs.sh: Submit multiple batchjobs (MRI data experiments)
-- run_syn_batchjobs.sh: Submit multiple batchjobs (synthetic data experiments)
-- submit_big.sh: Submit single batchjobs to BIG cluster
-- submit_hpc.sh: Submit single batchjobs to HPC cluster
 - visualize.ipynb: Visualize data and model outputs
-- MSBMenv.yml: Conda environment requirements
 - requirements.txt: Python package requirements
 
 
