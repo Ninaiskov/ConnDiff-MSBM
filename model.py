@@ -12,7 +12,7 @@ from scipy.special import gammaln, gamma
 import time
 from numba import njit, prange
 import scipy.io
-from helper_functions import compute_A#, generate_syndata
+from helper_functions import compute_A
 
 os.environ["OMP_NUM_THREADS"] = "10"  # set number of threads
 
@@ -34,8 +34,8 @@ def spmatmul(A, iA, jA, B, out):
                 out[i, k] += A[j] * B[jA[j], k]
 
 
-class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to MultinomialSBM
-    # Non-parametric IRM of uni-partite undirected graphs based on collapsed Gibbs sampling
+class MultinomialSBM(object):
+    # Parametric and Non-parametric version of the Multinomial Stochastic Block Model (MSBM) - uni-partite undirected graphs using collapsed Gibbs sampling
     
     # Usage model = MultinomialSBM(config)
     
@@ -44,7 +44,6 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
     # Predefied in code:
     # alpha         Hyperparameter for the Dirichlet prior on eta (default: np.log(N))
     # eta0          Initial value of 1 x S vector of clustering probabilities (default: np.ones(S)), where S is total number of graphs (subjects)
-    # n_graphs      Number of graphs used in threshold annealing (default: 4)
     
     # Output: model_sample.npy file containing:
     # iter          List of iterations
@@ -59,7 +58,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
     # MAP           MAP estimates for each parameter described above
     
     # Original Matlab version of code is written by Morten Mørup (name: IRMUnipartiteMultinomial.m)
-    # Python version of code and modifications is written by Nina Iskov
+    # Python version of code and extended framework is written by Nina Iskov
     
     def __init__(self, config):
         
@@ -74,12 +73,6 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
         self.eta_similarity = config.eta_similarity
         self.alpha = config.alpha
         
-            # MRI data configurations (fMRI and/or dMRI)
-        self.atlas_name = config.atlas_name
-        self.n_rois = config.n_rois
-        self.threshold_annealing = config.threshold_annealing
-        self.n_graphs = 4 # total number of graphs used in threshold annealing
-        
         # Model configuration. 
         self.model_type = config.model_type
         self.noc = config.noc
@@ -91,8 +84,8 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
         self.maxiter_alpha = config.maxiter_alpha
         self.maxiter_splitmerge = config.maxiter_splitmerge 
         self.matlab_compare = config.matlab_compare
-        #self.unit_test = config.unit_test
-        #self.reltol = 1e-9 # relative tolerance used for unit tests
+        self.unit_test = config.unit_test
+        self.reltol = 1e-9 # relative tolerance used for unit tests
         self.use_convergence_criteria = config.use_convergence_criteria 
         self.convergence_criteria = 1e-7 # convergence criteria (based on dlogP/abs(logP))
         
@@ -104,11 +97,10 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
         self.save_step = config.save_step
         
         self.it = 0
-        self.graph_count = 0 # count of graphs used in threshold annealing
         self.sample = {'iter': [], 'Z': [], 'noc': [], 'logP_A': [], 'logP_Z': [], 'logP': [], 'eta': [], 'alpha': [], 'eta0': []}
         
         # Load data (generate N x N x S adjacency matrix, A)
-        self.loaddata()
+        self.load_data()
         
         # Initialize variables
         if self.dataset == 'hcp':
@@ -128,7 +120,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
             ind = np.random.choice(self.noc, self.N)
         self.Z = csr_matrix((np.ones(self.N), (ind, np.arange(self.N))), shape=(self.noc, self.N)).toarray() # NEW (changed from csc to csr)
         self.Z = self.Z[self.Z.sum(axis=1) > 0,:] # remove empty clusters (if any)
-        self.sumZ = [] #np.sum(self.Z, axis=1) # no. nodes in each cluster
+        self.sumZ = [] # no. nodes in each cluster
        
     def train(self):
         
@@ -138,7 +130,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
         logP_best = -np.inf
 
         if self.disp: # Display algorithm
-            print('Uni-partite clustering based on the IRM model for Multinomial graphs')
+            print('Uni-partite clustering based on the MSBM for multiple graphs')
             dheader = '{:<12} | {:<12} | {:<12} | {:<12} | {:<12}'.format('Iteration', 'logP', 'dlogP/|logP|', 'noc', 'time')
             dline = '-------------+--------------+--------------+--------------+--------------'
             print(dline)
@@ -174,7 +166,6 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
             
             # Sample eta0
             self.sample_eta0() # input: A, Z, eta0. Output: logP_A, eta0
-            np.save('eta0_out.npy', self.eta0)
             
             # Calculate eta (we compute expected value of posterior of eta)
             self.calculate_eta() # input: Z, eta0. Output: eta
@@ -232,7 +223,6 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
         print('%12.0f | %12.4e | %12.4e | %12.0f | %12.4f ' % (self.it, logP, dlogP/abs(logP), self.noc, elapsed_time))
 
 ############################################################### Gibbs sampler ###############################################################
-    #@profile # uncomment when using lineprofiler
     def gibbs_sample_Z(self, Z, JJ, comp, Force):
         logQ_trans = 0 # log of transition probability of Z (used for split-merge MH sampler step)
         if self.model_type == 'parametric':
@@ -245,7 +235,7 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
         self.sumZ = np.sum(Z, axis=1) # number of nodes in each cluster
         self.noc = Z.shape[0] # number of clusters
     
-        n_link = self.compute_n_link(Z=Z, add_eta0=True, eta0=self.eta0) # sufficient statistic
+        n_link = self.compute_n_link(Z=Z, add_eta0=True, eta0=self.eta0) # sufficient statistics
         
         mult_eval = self.multinomialln(n_link) # compute (multinomial) log likelihood of number of links between clusters, log Beta(nlink+eta0)
         for i in JJ: # for each node (in random permutated order)
@@ -272,9 +262,8 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
                     v = v[v != d] # removing singleton cluster
                     d = [] 
                     self.noc -= 1 # reducing number of clusters by 1 
-                    P = csr_matrix((np.ones(self.noc),(np.arange(self.noc),v)), shape=(self.noc, self.noc+1))#.toarray() # NEW (changed from csc to csr)
-                    #Z = P @ Z
-                    Z = spdenmatmul(P,Z) # NEW
+                    P = csr_matrix((np.ones(self.noc),(np.arange(self.noc),v)), shape=(self.noc, self.noc+1))
+                    Z = spdenmatmul(P,Z)
                     ZAi = ZAi[v, :, :]
                     self.sumZ = self.sumZ[v]
                     n_link = n_link[v][:, v, :]
@@ -298,8 +287,8 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
                 else:
                     weight = self.sumZ + self.alpha # = gamma(self.sumZ + 1 + self.alpha)/gamma(self.sumZ + self.alpha)
                     
-                #if self.unit_test:
-                #    self.unit_test_gibbs(logQ, weight, i)
+                if self.unit_test:
+                    self.unit_test_gibbs(logQ, weight, i)
                 
                 QQ = weight * QQ # compute true (weighted) pdf (weighted by the conditional prior)
                 if self.matlab_compare:
@@ -340,8 +329,8 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
                 # Sample from posterior conditional
                 QQ = np.exp(logQ - np.max(logQ)) # normalize to avoid numerical problems
                 weight = self.sumZ[comp]
-                #if self.unit_test:
-                #    self.unit_test_splitmerge_Z(Z, comp, i, logQ, weight)
+                if self.unit_test:
+                    self.unit_test_splitmerge_Z(Z, comp, i, logQ, weight)
                     
                 QQ = weight * QQ # compute true (weighted) pdf
                 if len(Force) == 0:
@@ -504,8 +493,8 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
             else:
                 logP_Z_new = gammaln(self.noc * alpha_new) - gammaln(self.noc * alpha_new + self.N) - self.noc * gammaln(alpha_new) + np.sum(gammaln(self.sumZ + alpha_new))
 
-            #if self.unit_test:
-            #    self.unit_test_MH_alpha(alpha_new=alpha_new, logP_Z_new=logP_Z_new, logP_Z=self.logP_Z)
+            if self.unit_test:
+                self.unit_test_MH_alpha(alpha_new=alpha_new, logP_Z_new=logP_Z_new, logP_Z=self.logP_Z)
             
             if self.matlab_compare:
                 randalpha = randalpha_list[i]
@@ -517,102 +506,48 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
                 accept += 1
 
         # print('accepted ' + str(accept) + ' out of ' + str(self.maxiter_gibbs) + ' samples for alpha')
-    '''
-    def sample_eta0_new(self):
-        
-        n_link_noeta0 = self.compute_n_link(Z=self.Z, add_eta0=False, eta0=None)
-        for _ in range(self.maxiter_eta0):
-            randn_eta0 = np.random.randn(self.S)
-            eta0_new = np.exp(np.log(self.eta0) + 0.1 * randn_eta0)
-            const_new = self.multinomialln(eta0_new)
-            n_link_new = n_link_noeta0 + eta0_new[None,None,:]
-            logP_A_new = np.sum(np.triu(self.multinomialln(n_link_new))) - self.noc*(self.noc+1)/2 * const_new
-            
-            rand_eta0 = np.random.rand(self.S)
-            accept = rand_eta0 < (eta0_new/self.eta0) * np.exp(logP_A_new - self.logP_A) # r_p = logP_A_new - self.logP_A
-            self.eta0[accept] = eta0_new[accept]
-            self.logP_A = logP_A_new
-    '''
-    def sample_eta0(self): # MH sampler for eta0
-        np.save('A.npy',self.A)
-        np.save('Z.npy',self.Z)
-        np.save('eta0_in.npy',self.eta0)
-        np.save('logP_A.npy',self.logP_A)
-        
+
+    def sample_eta0(self): # MH sampler for eta0 
         if self.matlab_compare:
             randneta0_list = scipy.io.loadmat('matlab_randvar/randneta0.mat')['randneta0_list'].ravel() # TESTING
             randeta0_list = scipy.io.loadmat('matlab_randvar/randeta0.mat')['randeta0_list'].ravel() # TESTING
         
         n_link_noeta0 = self.compute_n_link(Z=self.Z, add_eta0=False, eta0=None)
-        np.save('n_link_noeta0.npy',n_link_noeta0)
         n_link = n_link_noeta0 + self.eta0
-        #const = self.multinomialln(self.eta0)
-        #self.logP_A = np.triu(self.multinomialln(n_link)).sum() - self.noc*(self.noc+1)/2 * const
-            
+        
         accept = 0
         for s in range(self.S):
             for i in range(self.maxiter_eta0):
                 if self.matlab_compare:
-                    randneta0 = randneta0_list[i] # TESTING
+                    randneta0 = randneta0_list[i]
                 else:
-                    randneta0 = 0.4 #np.random.randn() # Normally distributed random variable
-                    np.save('randneta0.npy',randneta0)
+                    randneta0 = np.random.randn() # Normally distributed random variable
                 # generate candidate sample eta0 by adding noise (en from standard deviation) to current eta0
                 eta_new = np.exp(np.log(self.eta0[s]) + 0.1 * randneta0)  # symmetric proposal distribution in log-domain (use change of variable in acceptance rate alpha_new/alpha)
                 eta0_new = self.eta0.copy()
                 eta0_new[s] = eta_new
                 const_new = self.multinomialln(eta0_new)
-                np.save('const_new.npy',self.eta0)
                 n_link_new = n_link.copy()
                 n_link_new[:,:,s] = n_link_noeta0[:,:,s] + eta_new
                 logP_A_new = np.sum(np.triu(self.multinomialln(n_link_new))) - self.noc*(self.noc+1)/2 * const_new
                 
-                #if self.unit_test:
-                #    self.unit_test_MH_eta0(eta0_new = eta0_new, logP_A_new = logP_A_new, logP_A = self.logP_A)
+                if self.unit_test:
+                    self.unit_test_MH_eta0(eta0_new = eta0_new, logP_A_new = logP_A_new, logP_A = self.logP_A)
                 
                 # randeta0 is u_k
                 if self.matlab_compare:
                     randeta0 = randeta0_list[i]
                 else:
-                    randeta0 = 0.8 #np.random.rand()
-                    np.save('randeta0.npy',randeta0)
+                    randeta0 = np.random.rand()
                 if randeta0 < (eta_new/self.eta0[s]) * np.exp(logP_A_new - self.logP_A): # r_p = logP_A_new - self.logP_A
                     self.eta0[s] = eta_new
                     self.logP_A = logP_A_new
                     n_link = n_link_new
                     accept += 1
 
-        #return logP, eta0
-
 
 ############################################################### Data processing functions ###############################################################
     def load_data(self):
-            data_path = os.path.join(self.main_dir, 'data/'+self.dataset)
-            if self.dataset == 'synthetic':
-                if self.matlab_compare:
-                    A_dict = scipy.io.loadmat('matlab_randvar/A.mat')
-                    self.A = A_dict['A']
-                else:
-                    #self.A = generate_syndata(self.Nc, self.K, self.S1, self.S2)
-                    filename = 'A_'+str(self.N)+'_'+str(self.K)+'_'+str(self.S1)+'_'+str(self.S2)+'_'+str(self.Nc_type)+'_'+str(self.eta_similarity)+'.npy'
-                    self.A = np.load(os.path.join(data_path, filename))
-            elif self.dataset == 'hcp' or self.dataset == 'decnef':
-                folder_name = self.atlas_name+str(self.n_rois)
-                folder_path = os.path.join(data_path, folder_name)
-                if self.threshold_annealing: # incresing graph density over iterations
-                    self.graph_count += 1
-                    print('Annealing threshold: graph no. '+str(self.graph_count))
-                    filename = 'A'+str(self.graph_count)+'_vals_list.npy'
-                    A_vals_list = np.load(os.path.join(folder_path, filename))
-                else: # using fixed graph density (most dense graph)
-                    print('No threshold annnealing: Using fixed graph density (most dense graph)')
-                    filename = 'A'+str(self.n_graphs)+'_vals_list.npy' # use most dense graph (A4_vals_list.npy)
-                    A_vals_list = np.load(os.path.join(folder_path, filename))
-                self.A = compute_A(A_vals_list, self.n_rois)
-            else:
-                print('Unknown dataset')
-    
-    def loaddata(self):
         data_path = os.path.join(self.main_dir, 'data/'+self.dataset)
         if self.dataset == 'synthetic':
             filename = 'A_'+str(self.K)+'_'+str(self.S1)+'_'+str(self.S2)+'_'+str(self.Nc_type)+'_{:.3g}'.format(self.alpha)
@@ -631,22 +566,16 @@ class MultinomialSBM(object): # changed name from IRMUnipartiteMultinomial to Mu
 ############################################################### Model evaluation functions ###############################################################
 
     def compute_n_link(self, Z, add_eta0, eta0):
-        #n_link = np.stack([Z @ self.A[:, :, s] @ Z.T for s in range(self.S)],axis=2) # used for stacked 3D array of dense matric
-        #n_link = np.stack([Z @ As @ Z.T for As in self.A],axis=2) # used for list of scipy sparse csr matrix
         if self.dataset == 'hcp':
             n_link = np.stack([Z @ spdenmatmul(As, Z.T) for As in self.A],axis=2) # used for list of scipy sparse csr matrix (NEW numba version)
         elif self.dataset == 'synthetic':
             n_link = np.stack([Z @ self.A[:, :, s] @ Z.T for s in range(self.S)],axis=2) # used for stacked 3D array of dense matric
-        #n_link = (Z[None] @ self.A.T @ Z.T[None]).T # used for sparse 3D COO matrix
         if add_eta0 == False:
             eta0 = np.zeros(self.S)
-        #else: 
-        #    print('add_eta0', add_eta0)
-        #n_link = n_link - 0.5 * np.eye(noc)*n_link + eta0[:,None,None] # doesn't work
         n_link = np.stack([n_link[:, :, s] - 0.5 * np.diag(np.diag(n_link[:, :, s])) + eta0[s] for s in range(self.S)], axis=2) # old line that works (can probably be optimized)
         return n_link
      
-    def multinomialln(self, x): # maybe better to call it logbeta func 
+    def multinomialln(self, x): # "logbeta func"
         # Multinomial distribution (log probability)
         return np.sum(gammaln(x), axis=-1) - gammaln(np.sum(x, axis=-1))
 

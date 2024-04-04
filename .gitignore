@@ -3,6 +3,8 @@ __pycache__
 .DS_Store
 
 # folders
+speciale
+matlab_randvar
 data
 figures
 results/hcp
@@ -14,3 +16,5 @@ run_syn_batchjobs.sh
 submit_big.sh
 submit_hpc.sh
 get_nlink.py
+main_nonpar.py
+model_nonpar.py
