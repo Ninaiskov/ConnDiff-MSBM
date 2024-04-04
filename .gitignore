@@ -1,7 +1,8 @@
 .gitignore
 
-data/hcp
+data
 figures
+results/hcp/
 
 run_mri_batchjobs.sh
 run_syn_batchjobs.sh
