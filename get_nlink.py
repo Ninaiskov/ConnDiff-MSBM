@@ -4,6 +4,8 @@ from numba import njit, prange
 from scipy.sparse import load_npz, triu
 from helper_functions import get_exp_overview, get_best_run
 
+# Script for computing number of links between each cluster pair (cluster-link density)
+
 os.environ["OMP_NUM_THREADS"] = "5"  # set number of threads
 
 main_dir = '/work3/s174162/speciale'

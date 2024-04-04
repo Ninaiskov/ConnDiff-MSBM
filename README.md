@@ -36,7 +36,6 @@ Connectivity map (Probability of link between clusters, where red = functional c
 - model.py: Multinomial Stochastic Block Model (MSBM) class with Gibbs sampling inference
 - createGraphs.m: Generate adjacency matrices (graphs) from dMRI (structural) and fMRI (functional) images
 - get_Glassergraphs.py: Generate adjacency matrices (graphs) in Glasser atlas resolution
-- get_nlink.py: Compute number of links between each cluster pair (cluster-link density)
 - helper_functions.py: Helper functions (plotting functions etc.)
 - visualize.ipynb: Visualize data and model outputs
 - requirements.txt: Python package requirements
