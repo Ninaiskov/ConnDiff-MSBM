@@ -9,9 +9,9 @@ def main(config):
     config.main_dir = os.getcwd()
     # initiate results folder and log.txt file
     exp_name = config.dataset+'_'+str(datetime.now())
-    config.save_dir = os.path.join(config.main_dir, 'results/'+config.dataset+'/'+exp_name)
+    config.save_dir = os.path.join(config.main_dir, 'results',config.dataset,exp_name)#os.path.join(config.main_dir, 'results/'+config.dataset+'/'+exp_name)
     if not os.path.exists(config.save_dir):
-        os.mkdir(config.save_dir)
+        os.makedirs(config.save_dir)
     
     # making sure parameters make sense wrt. other parameters
     if config.model_type == 'parametric':

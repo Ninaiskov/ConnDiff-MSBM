@@ -12,7 +12,7 @@ from scipy.special import gammaln, gamma
 import time
 from numba import njit, prange
 import scipy.io
-from helper_functions import compute_A
+#from helper_functions
 
 os.environ["OMP_NUM_THREADS"] = "10"  # set number of threads
 
