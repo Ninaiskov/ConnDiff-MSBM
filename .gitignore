@@ -12,4 +12,4 @@ run_mri_batchjobs.sh
 run_syn_batchjobs.sh
 submit_big.sh
 submit_hpc.sh
-get_nlink.py # script used to perform some testing on another dataset
+get_nlink.py
