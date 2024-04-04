@@ -883,6 +883,8 @@ def plot_sortedA(A_fmri_list, A_dmri_list, Z, main_dir=main_dir, label_fontsize=
   
     if K < 25:
         colors = colors[:K+1]
+    if K == 4: # modifying colors for K=4 solution to be conherent with K=3 solution (reviewer comment)
+        colors = ['plum', 'skyblue','tomato','blueviolet']    
     elif K == 25:
         colors = colors
     else:
