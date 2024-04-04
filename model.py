@@ -69,7 +69,6 @@ class MultinomialSBM(object):
         self.S1 = config.S1
         self.S2 = config.S2
         self.Nc_type = config.Nc_type
-        self.eta_similarity = config.eta_similarity
         self.alpha = config.alpha
         
         # Model configuration. 
