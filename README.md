@@ -12,7 +12,7 @@ This work showcase how MSBM can offer valuable insights to brain connectivity as
 Data used is open-access neuroimaging dataset (fMRI and dMRI scans) from Human Connectome Project (HCP) and synthetically generated data
 
 ### Results
-Result files 'model_sample.npy' including MAP partition matrix Z are located in results folder under respective experiment subfolder (only results files for best runs for HCP data are uploaded)
+Result files 'model_sampleK<K>.npy' containing MAP partition matrix Z are located in results/hcp_best (only results files for best runs for HCP data are uploaded).
 
 #### Examples of HCP results for 25 clusters
 

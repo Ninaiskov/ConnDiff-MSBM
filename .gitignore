@@ -5,7 +5,8 @@ __pycache__
 # folders
 data
 figures
-results
+results/hcp
+results/synthetic
 
 # scripts
 run_mri_batchjobs.sh
