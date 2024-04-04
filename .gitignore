@@ -1,0 +1,7 @@
+data/hcp
+figures
+
+run_mri_batchjobs.sh
+run_mri_batchjobs.sh
+submit_big.sh
+submit_hpc.sh
