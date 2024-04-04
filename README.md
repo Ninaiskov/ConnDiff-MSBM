@@ -54,21 +54,16 @@ Connectivity map (Probability of link between clusters, where red = functional c
 git clone https://github.com/Ninaiskov/ConnDiff-MSBM.git
 ``` 
 
-2. Create a conda environment from the MSBMenv.yml file
+2. Create a conda environment and install required packages
 ``` 
-conda env create -f MSBMenv.yml
+conda create --name <env_name> --file requirements.txt
+
+3. Activate the environment
 ```
-and activate the environment 
-```
-conda activate MSBMenv
+conda activate <env_name>
 ```
 
-Alternatively: install required packages using 
-```
-pip install -r requirements.txt
-```
-
-3. Run the main.py script to run the model:
+4. Run the main.py script to run the model
 ```
 python main.py
 ```
