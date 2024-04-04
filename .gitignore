@@ -1,4 +1,6 @@
 .gitignore
+#__pychache__
+#.lprof
 
 data
 figures
