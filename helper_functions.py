@@ -22,7 +22,7 @@ from matplotlib import colormaps
 from collections import Counter
 
 # main directory
-main_dir = os.getcwd()#'/Users/Nina/Library/CloudStorage/OneDrive-DanmarksTekniskeUniversitet/Article/ConnDiff-MSBM'
+main_dir = os.getcwd()
 # general plotting parameters
 label_fontsize = 15
 legend_fontsize = 10

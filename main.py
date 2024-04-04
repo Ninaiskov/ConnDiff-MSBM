@@ -93,7 +93,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_convergence_criteria', type=bool, default=False, help='use convergence criteria (True/False). If True, the algorithm stops when the convergence criteria is met')
     
     # Miscellaneous.
-    #parser.add_argument('--main_dir', type=str, default='/work3/s174162/speciale/', help='main directory')
+    parser.add_argument('--main_dir', type=str, default='/work3/s174162/speciale/', help='main directory')
     parser.add_argument('--save_dir', type=str, default=None, help='directory to save results')
     parser.add_argument('--disp', type=bool, default=True, help='display iteration results (True/False)')
     parser.add_argument('--sample_step', type=int, default=1, help='number of iterations between each logged sample')
