@@ -87,6 +87,249 @@ def get_exp_overview(top_dir):
             
     return df_new
 
+def generate_syndata_ALTERNATIVE(K, S1, S2, Nc_type, alpha, seed=0, save_data=False, disp_data = False, dataset='synthetic',
+                     label_fontsize=label_fontsize, subtitle_fontsize=subtitle_fontsize, title_fontsize=title_fontsize, cmap_color=cmap_color):
+    ## Inputs
+    # K                     Number of clusters;
+    # S1                    Number of first type of graph, e.g. healthy
+    # S2                    Number of second type of graph, e.g. sick
+    # Nc_type               Node distribution in clusters, either 'balanced' or 'unbalanced' no. of nodes in each cluster
+    # alpha                 Scaling parameter controling similarity between population etas (alpha=0 --> completely different, alpha=0.5 --> same)
+    
+    # seed                  Random seed used
+    # disp_data             Bool for displaying generated data
+    # label_fontsize        Label fontsize
+    # subtitle_fontsize     Subtitle fontsize
+    # title_fontsize        Title fontsize
+    
+        # predefined: N = total number of nodes
+
+    # Output
+    # A = adjacency matrices for all subjects
+    
+    np.random.seed(seed)
+    ### STEPS:
+    ## 1) compute partition (Z) - original and expected
+    # balanced or unbalanced
+    N = 100 # the distribution of nodes sum up to 100
+    # balanced or unbalanced
+    if Nc_type == 'balanced':
+        if K == 2:    
+            N = 70
+        elif K == 3:
+            N = 90
+        elif K == 4:
+            N = 100
+        else:
+            print('Nc not specfied for chosen K')
+        Nc = int(N/K)
+        Z = np.kron(np.eye(K),np.ones((Nc,1)))
+        Nc_list = np.repeat(Nc,K).tolist()
+    elif Nc_type == 'unbalanced': 
+        if K == 2:
+            Nc_list = [40, 30]
+        elif K == 3:
+            Nc_list = [40, 30, 20]
+        elif K == 4:
+            Nc_list = [40, 30, 20, 10]
+        else:
+            print('Nc_list not specfied for chosen K')
+
+        Z = np.zeros((N, K))
+        for k in range(K): # len(Nc_list) = K
+            Nc = Nc_list[k]
+            cumsumNc = int(np.sum(Nc_list[:k]))
+            Z[cumsumNc:cumsumNc+Nc, k] = 1
+    else:
+        print('Unknown Nc_type')
+    
+    ## 2) Computing population cluster-link probability matrices (eta_p1 and eta_p2)
+    # eta1 will always have high within compared to between cluster-linkprob. and vice versa with eta2.
+    eta1 = np.random.choice(np.linspace(0,0.4,K*K),(K,K))
+    eta1[np.diag_indices_from(eta1)] = np.ones(K)*0.9
+    eta2 = 1-eta1 
+        
+    # making eta-matrices symmetric - only including the diagonal once!
+    eta1 = np.triu(eta1, 1) + np.triu(eta1, 0).T  
+    eta2 = np.triu(eta2, 1) + np.triu(eta2, 0).T
+
+    # reparametrize alpha := 2*alpha
+    eta_p1 = (1-alpha/2)*eta1 + alpha/2*eta2
+    eta_p2 = alpha/2*eta1 + (1-alpha/2)*eta2
+    # note similarity between eta_p1 and eta_p2 is controlled by the scaling parameter alpha which mixes eta1 and eta2 
+   
+    # if alpha = 0 --> eta_p1 = eta1 and eta_p2 = eta2 (completely different population etas)
+    # if alpha = 0.5 --> eta_p1 = 1/2*(eta1+eta2) and eta_p2 = 1/2*(eta1+eta2) (same population etas)
+    # if alpha \in ]0, 0.5[ --> eta_p1 and eta_p2 are partially different 
+    
+    # 3) Compute adjacency matrices (A)
+    A = np.empty((N, N, S1+S2))
+    A.fill(np.nan)
+    M1 = Z @ eta_p1 @ Z.T
+    M2 = Z @ eta_p2 @ Z.T
+    randthres = np.random.rand(N, N, S1+S2)
+    #randthres = np.random.rand(N,N)
+    for s in range(S1+S2): # note two cases: S1=5, S2=5 and S1=10, S2=5
+        if s <= S1-1:
+            At = M1 > randthres[:,:,s]
+            A[:,:,s] = np.triu(At, 1) + np. triu(At, 1).T
+        else:
+            At = M2 > randthres[:,:,s]
+            A[:,:,s] = np.triu(At, 1) + np. triu(At, 1).T
+
+    # 4) Computed expected partitions based on alpha and Nc_type
+    diff_clusters = np.where(np.any(np.triu(eta_p1-eta_p2,0),axis=1))[0] # difference clusters
+    if len(diff_clusters) > 0:
+        remaining_nodes = np.delete(Nc_list, diff_clusters).sum() # nodes that are not a part of difference-clusters
+        if remaining_nodes == 0:
+            Nc_list_new = Nc_list
+        else:
+            Nc_list_new = np.append(Nc_list[diff_clusters],remaining_nodes)
+        new_K = len(Nc_list_new)
+        Zexp = np.zeros((N, new_K))
+        for k in range(new_K):
+            Nc = Nc_list[k]
+            cumsumNc = int(np.sum(Nc_list_new[:k]))
+            Zexp[cumsumNc:cumsumNc+Nc, k] = 1
+    else: # no diff clusters 
+        Zexp = np.ones((N,1))
+ 
+    A_filename = 'A_'+str(K)+'_'+str(S1)+'_'+str(S2)+'_'+str(Nc_type)+'_{:.3g}'.format(alpha)
+    Zini_filename = 'Zini_'+str(K)+'_'+str(Nc_type) # Zini_{K}_{Nc_type} "Initial / original partition matrix"
+    Zexp_filename = 'Zexp_'+str(K)+'_'+str(Nc_type)+'_{:.2g}'.format(alpha)
+    eta_filename = str(K)+'_{:.2g}'.format(alpha)
+
+    # 5) Save data
+    if save_data:
+        np.save(os.path.join(main_dir,'data',dataset,A_filename+'.npy'), A)
+        np.save(os.path.join(main_dir,'data',dataset,Zini_filename+'.npy'), Z)
+        np.save(os.path.join(main_dir,'data',dataset,Zexp_filename+'.npy'), Zexp)
+        np.save(os.path.join(main_dir,'data',dataset,'eta_p1_'+eta_filename+'.npy'), eta_p1)
+        np.save(os.path.join(main_dir,'data',dataset,'eta_p2_'+eta_filename+'.npy'), eta_p2)
+
+    # 6) Display data
+    if disp_data:
+
+        fig, ax = plt.subplots()
+        cmap = ListedColormap(['w', 'k']) 
+        im = ax.imshow(Z, interpolation='nearest', aspect='auto', cmap=cmap, extent=(0, Z.shape[1], 0, Z.shape[0]))
+        ax.set_ylabel('Node', fontsize=label_fontsize)
+        ax.set_xlabel('Cluster', fontsize=label_fontsize)
+        ax.set_title('Initial partition $z_{ini}$', fontsize=title_fontsize, weight='bold')
+        cbar = fig.colorbar(im, ax=ax, shrink=0.7, ticks=[0,1])
+        plt.savefig(os.path.join(main_dir,'figures/',Zini_filename+'.png'), bbox_inches='tight', dpi=dpi)
+
+        fig, ax = plt.subplots()
+        if Zexp.shape[1] == 1: #(only one cluster)
+            cmap = ListedColormap(['k'])
+        else:   
+            cmap = ListedColormap(['w', 'k']) 
+        im = ax.imshow(Zexp, interpolation='nearest', aspect='auto', cmap=cmap, extent=(0, Zexp.shape[1], 0, Zexp.shape[0]))
+        ax.set_ylabel('Node', fontsize=label_fontsize)
+        ax.set_xlabel('Cluster', fontsize=label_fontsize)
+        ax.set_title('Expected partition $z_{exp}$', fontsize=title_fontsize, weight='bold')
+        cbar = fig.colorbar(im, ax=ax, shrink=0.7, ticks=[0,1])
+        plt.savefig(os.path.join(main_dir,'figures/',Zexp_filename+'.png'), bbox_inches='tight', dpi=dpi)
+
+        xy_ticks = range(0, K + 1, 1)
+        cmap = cmap_color
+        fig, ax = plt.subplots(1,2)
+        plt.subplots_adjust(wspace=0.45, top=1.22)
+        im = ax[0].imshow(eta_p1, cmap=cmap, extent=[0,K,K,0], vmin=0, vmax=1)
+        ax[0].set_ylabel('Cluster', fontsize=label_fontsize)
+        ax[0].set_xlabel('Cluster', fontsize=label_fontsize)
+        ax[0].set_yticks(xy_ticks)
+        ax[0].set_yticklabels(xy_ticks)
+        ax[0].set_xticks(xy_ticks)
+        ax[0].set_xticklabels(xy_ticks)
+        ax[0].set_title('$\eta_{p1}$', fontsize=subtitle_fontsize, weight='bold')
+        
+        im = ax[1].imshow(eta_p2, cmap=cmap, extent=[0,K,K,0], vmin=0, vmax=1)
+        ax[1].set_ylabel('Cluster', fontsize=label_fontsize)
+        ax[1].set_xlabel('Cluster', fontsize=label_fontsize)
+        ax[1].set_yticks(xy_ticks)
+        ax[1].set_yticklabels(xy_ticks)
+        ax[1].set_xticks(xy_ticks)
+        ax[1].set_xticklabels(xy_ticks)
+        ax[1].set_title('$\eta_{p2}$', fontsize=subtitle_fontsize, weight='bold')
+        cbar = fig.colorbar(im, ax=ax.ravel().tolist(), shrink=0.3)
+        fig.suptitle('Cluster-link probability matrices',fontsize=title_fontsize, weight='bold')
+        plt.savefig(os.path.join(main_dir,'figures/','eta_'+eta_filename+'_types.png'), bbox_inches='tight', dpi=dpi)
+
+        
+        fig, ax = plt.subplots(1,2)
+        xy_ticks = range(0, N + 1, 20)
+        cmap = cmap_color
+        plt.subplots_adjust(wspace=0.45, top=1.1)
+        im = ax[0].imshow(M1, cmap = cmap, vmin=0, vmax=1)
+        ax[0].set_ylabel('Node', fontsize=label_fontsize)
+        ax[0].set_xlabel('Node', fontsize=label_fontsize)
+        ax[0].set_yticks(xy_ticks)
+        ax[0].set_yticklabels(xy_ticks)
+        ax[0].set_xticks(xy_ticks)
+        ax[0].set_xticklabels(xy_ticks)
+        ax[0].set_title('$M_{p1}$', fontsize=subtitle_fontsize, weight='bold')
+        im = ax[1].imshow(M2, cmap = cmap, vmin=0, vmax=1)
+        ax[1].set_ylabel('Node', fontsize=label_fontsize)
+        ax[1].set_xlabel('Node', fontsize=label_fontsize)
+        ax[1].set_yticks(xy_ticks)
+        ax[1].set_yticklabels(xy_ticks)
+        ax[1].set_xticks(xy_ticks)
+        ax[1].set_xticklabels(xy_ticks)
+        ax[1].set_title('$M_{p2}$', fontsize=subtitle_fontsize, weight='bold')
+        cbar = fig.colorbar(im, ax=ax.ravel().tolist(), shrink=0.3)
+        #fig.suptitle('$M$',fontsize=15, weight='bold')
+        plt.savefig(os.path.join(main_dir,'figures/', 'M_'+eta_filename+'_types.png'), bbox_inches='tight', dpi=dpi)
+        
+        xy_ticks = range(0, N + 1, 20)
+        map_values = [0,1]
+        colormap = plt.cm.Blues
+        cmap = plt.cm.colors.ListedColormap(colormap(np.linspace(0, 1, len(map_values))))
+        fig, ax = plt.subplots(1,2)
+        plt.subplots_adjust(wspace=0.45, top=1.1)
+        im = ax[0].imshow(A[:,:,0],cmap=cmap)
+        ax[0].set_ylabel('Node', fontsize=label_fontsize)
+        ax[0].set_xlabel('Node', fontsize=label_fontsize)
+        ax[0].set_yticks(xy_ticks)
+        ax[0].set_yticklabels(xy_ticks)
+        ax[0].set_xticks(xy_ticks)
+        ax[0].set_xticklabels(xy_ticks)
+        ax[0].set_title('$A_{p1}$', fontsize=subtitle_fontsize, weight='bold')
+        im = ax[1].imshow(A[:,:,-1], cmap=cmap)
+        ax[1].set_ylabel('Node', fontsize=label_fontsize)
+        ax[1].set_xlabel('Node', fontsize=label_fontsize)
+        ax[1].set_yticks(xy_ticks)
+        ax[1].set_yticklabels(xy_ticks)
+        ax[1].set_xticks(xy_ticks)
+        ax[1].set_xticklabels(xy_ticks)
+        ax[1].set_title('$A_{p2}$', fontsize=subtitle_fontsize , weight='bold')
+        cbar = fig.colorbar(im, ax=ax.ravel().tolist(), shrink=0.3, ticks=[0, 1])
+        fig.suptitle('Adjacency matrices',fontsize=title_fontsize, weight='bold')
+        plt.savefig(os.path.join(main_dir,'figures/',A_filename+'_types.png'), bbox_inches='tight', dpi=dpi)
+        
+        A_p1 = A[:,:,:S1]
+        A_p2 = A[:,:,S1:]
+        fig, axs = plt.subplots(2, 5, figsize=(15, 7), constrained_layout=True)
+        #fig.subplots_adjust(top=0.9)  # Add space between suptitle and subplots
+        #fig.subplots_adjust(hspace=0.6)  # Add space between the first 5 subplots and the last 5 subplots
+        axs = axs.ravel()
+        for s in range(S1+S2):
+            if s < S1:
+                im = axs[s].imshow(A_p1[:,:,s], cmap=cmap)
+                axs[s].set_ylabel('Nodes', fontsize=label_fontsize)
+                axs[s].set_xlabel('Nodes', fontsize=label_fontsize)
+            else:
+                im = axs[s].imshow(A_p2[:,:,s-S1], cmap=cmap)
+                axs[s].set_ylabel('Nodes', fontsize=label_fontsize)
+                axs[s].set_xlabel('Nodes', fontsize=label_fontsize)
+
+        axs[0].set_title('$A_{p1}$', fontsize=subtitle_fontsize, weight='bold')
+        axs[5].set_title('$A_{p2}$', fontsize=subtitle_fontsize, weight='bold')    
+        fig.suptitle('Adjacency matrices for synthetic data', fontsize=title_fontsize, weight='bold')
+        cbar = fig.colorbar(im, ax=axs.ravel().tolist(), shrink=0.9, ticks=[0, 1])
+        plt.savefig(os.path.join(main_dir,'figures',A_filename+'_all.png'), bbox_inches='tight', dpi=dpi)
+    
+    return A, Z, Zexp, eta_p1, eta_p2
 
 def generate_syndata(K, S1, S2, Nc_type, alpha, seed=0, save_data=False, disp_data = False, dataset='synthetic',
                      label_fontsize=label_fontsize, subtitle_fontsize=subtitle_fontsize, title_fontsize=title_fontsize, cmap_color=cmap_color):
@@ -111,6 +354,7 @@ def generate_syndata(K, S1, S2, Nc_type, alpha, seed=0, save_data=False, disp_da
     np.random.seed(seed)
     ### STEPS:
     ## 1) compute partition (Z) - original and expected
+    # balanced or unbalanced
     N = 100 # the distribution of nodes sum up to 100
     # balanced or unbalanced
     if Nc_type == 'balanced':
@@ -134,7 +378,7 @@ def generate_syndata(K, S1, S2, Nc_type, alpha, seed=0, save_data=False, disp_da
             Z[cumsumNc:cumsumNc+Nc, k] = 1
     else:
         print('Unknown Nc_type')
-        
+     
     ## 2) Computing population cluster-link probability matrices (eta_p1 and eta_p2)
     # eta1 will always have high within compared to between cluster-linkprob. and vice versa with eta2.
     eta1 = np.random.choice(np.linspace(0,0.4,K*K),(K,K))
