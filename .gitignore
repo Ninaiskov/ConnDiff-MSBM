@@ -18,3 +18,4 @@ submit_hpc.sh
 get_nlink.py
 main_nonpar.py
 model_nonpar.py
+stattest.ipynb
