@@ -51,7 +51,8 @@ git clone https://github.com/Ninaiskov/ConnDiff-MSBM.git
 2. Create a conda environment and install required packages
 ``` 
 conda create --name <env_name> --file requirements.txt
-``` 
+```
+
 3. Activate the environment
 ```
 conda activate <env_name>

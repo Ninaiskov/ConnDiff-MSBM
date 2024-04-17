@@ -31,6 +31,6 @@ for noc in noc_list:
     z = np.argmax(Z, axis=0)+1 # cluster assignments
     etaD_list = []
     for filename in filenames:
-        etaD = compute_etaD(filename, z)
+        etaD = compute_etaD(data_path=data_path, filename=filename, z=z)
         etaD_list.append(etaD)
     np.save(os.path.join(data_path,'etaD_'+str(noc)+'.npy'),np.stack(etaD_list).T)
