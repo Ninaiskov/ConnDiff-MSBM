@@ -626,8 +626,7 @@ def plot_par_over_ininoc(df, pars):
         #plt.legend(loc='upper right',fontsize='small', fancybox=True, shadow=True, bbox_to_anchor=(1.15, 0.85))
         plt.legend(loc='center right',fontsize=legend_fontsize, fancybox=True, shadow=True)
         plt.savefig(os.path.join(main_dir,'figures','hcp_plot_MAP_pars.png'), bbox_inches='tight', dpi=dpi)
-     
-        
+            
 def plot_eta(dataset, eta, exp_name_title=None, main_dir=main_dir, label_fontsize=label_fontsize, subtitle_fontsize=subtitle_fontsize, title_fontsize=title_fontsize, cmap_color=cmap_color):
     if dataset == 'hcp' or dataset == 'synthetic':
         S1 = 5 
@@ -638,10 +637,13 @@ def plot_eta(dataset, eta, exp_name_title=None, main_dir=main_dir, label_fontsiz
     
     eta_type1 = eta[:,:,:S1] 
     eta_type2 = eta[:,:,S1:] 
+    eta_diff = eta_type1 - eta_type2
     
-    fig, axs = plt.subplots(2, 5, figsize=(15, 7), constrained_layout=True)
+    #fig, axs = plt.subplots(2, 5, figsize=(15, 7), constrained_layout=True)
+    fig, axs = plt.subplots(3, 5, figsize=(15, 10), constrained_layout=True)
     axs = axs.ravel()
     cmap = cmap_color
+    cmap_diff = plt.cm.coolwarm#bwr
 
     K = eta.shape[0]
     if K == 25:
@@ -652,9 +654,17 @@ def plot_eta(dataset, eta, exp_name_title=None, main_dir=main_dir, label_fontsiz
         xy_ticks = (np.array(xy_ticklabels)-1).tolist()
     tick_fontsize = 10
 
-    for s in range(10):
-        if s < 5:
-            im = axs[s].imshow(eta_type1[:,:,s], cmap=cmap)#, extent=[0,K,K,0])#, vmin=0, vmax=max_val)
+    for s in range(S1*3):
+        if s < S1:
+            im1 = axs[s].imshow(eta_type1[:,:,s], cmap=cmap)#, extent=[0,K,K,0])#, vmin=0, vmax=max_val)
+            axs[s].set_ylabel('Cluster', fontsize=label_fontsize)
+            axs[s].set_xlabel('Cluster', fontsize=label_fontsize)
+            axs[s].set_yticks(xy_ticks)
+            axs[s].set_yticklabels(xy_ticklabels,fontsize=tick_fontsize)
+            axs[s].set_xticks(xy_ticks)
+            axs[s].set_xticklabels(xy_ticklabels,fontsize=tick_fontsize)
+        elif s >= S1 and s < (S1+S2):
+            im2 = axs[s].imshow(eta_type2[:,:,s-S1], cmap=cmap)#, extent=[0,K,K,0])#, vmin=0, vmax=max_val)
             axs[s].set_ylabel('Cluster', fontsize=label_fontsize)
             axs[s].set_xlabel('Cluster', fontsize=label_fontsize)
             axs[s].set_yticks(xy_ticks)
@@ -662,17 +672,17 @@ def plot_eta(dataset, eta, exp_name_title=None, main_dir=main_dir, label_fontsiz
             axs[s].set_xticks(xy_ticks)
             axs[s].set_xticklabels(xy_ticklabels,fontsize=tick_fontsize)
         else:
-            im = axs[s].imshow(eta_type2[:,:,s-S1], cmap=cmap)#, extent=[0,K,K,0])#, vmin=0, vmax=max_val)
+            im3 = axs[s].imshow(eta_diff[:,:,s-S1-S2], cmap=cmap_diff)#, extent=[0,K,K,0])#, vmin=0, vmax=max_val)
             axs[s].set_ylabel('Cluster', fontsize=label_fontsize)
             axs[s].set_xlabel('Cluster', fontsize=label_fontsize)
             axs[s].set_yticks(xy_ticks)
             axs[s].set_yticklabels(xy_ticklabels,fontsize=tick_fontsize)
             axs[s].set_xticks(xy_ticks)
             axs[s].set_xticklabels(xy_ticklabels,fontsize=tick_fontsize)
-
     if dataset == 'hcp':
         axs[0].set_title('Functional', fontsize=subtitle_fontsize, weight='bold')
         axs[5].set_title('Structural', fontsize=subtitle_fontsize, weight='bold')
+        axs[10].set_title('Difference', fontsize=subtitle_fontsize, weight='bold')
     elif dataset == 'synthetic':
         axs[0].set_title('Type 1', fontsize=subtitle_fontsize, weight='bold')
         axs[5].set_title('Type 2', fontsize=subtitle_fontsize, weight='bold')
@@ -682,9 +692,10 @@ def plot_eta(dataset, eta, exp_name_title=None, main_dir=main_dir, label_fontsiz
         fig.suptitle(exp_name_title, fontsize=title_fontsize, weight='bold')
     else:
         fig.suptitle('Cluster-link probability matrices', fontsize=title_fontsize, weight='bold')
-    cbar = fig.colorbar(im, ax=axs.ravel().tolist(), shrink=0.95)
+    fig.colorbar(im1, ax=axs[:9].ravel().tolist(), shrink=0.5, pad=0.01)
+    fig.colorbar(im3, ax=axs[14], shrink=0.8)
     plt.savefig(os.path.join(main_dir,'figures',dataset+'_eta_types_'+str(K)+'.png'), bbox_inches='tight', dpi=dpi)    
-   
+
    
 def plot_ZMAP(Z, dataset):
     noc = Z.shape[0]
@@ -818,8 +829,8 @@ def compute_etaD(data_path, filename, z): # NEW
     N = len(z)
     Z = csr_matrix((np.ones(N), (z-1, np.arange(N))), shape=(np.max(z), N)) # Note: z - 1 because python is 0-indexed and labels start at 1
     sumZ = Z.sum(axis=1)
-    ntot = np.asarray(sumZ @ sumZ.T - Z @ Z.T)
-    ntot = ntot - 0.5 * np.diag(np.diag(ntot)) # same as sum_n_link in calculate_eta?
+    ntot = np.asarray(sumZ @ sumZ.T - Z @ Z.T) # total possible number of links between each pair of clusters (excluding the possibility of nodes connecting to themselves)
+    ntot = ntot - 0.5 * np.diag(np.diag(ntot)) # dividing diagonal elements by 2 since it has been counted twice
     nlink = compute_nlink_singlegraph(Z, A)
     etaD = nlink/ntot
     return etaD
@@ -1083,7 +1094,7 @@ def plot_eta_graph(eta, eta0, diff_metric='diff_entropy',lw_lower=0.2, lw_upper=
         for l in range(K):
             for m in range(K):
                 eta_entropy[l,m] = diff_entropy(n_link[l,m,:]+eta0)*-1 # -1 since high entropy indicates more uniform distribution and vice versa
-        K25_entropy_min = 60.69411630369723
+        K25_entropy_min = 60.69411630369723 # hardcoded in order to have same entropy range across K
         K25_entropy_max = 111.35731810331345
         linewidth_range = (lw_lower, lw_upper)
         mapping = lambda x: np.interp(x, (K25_entropy_min,K25_entropy_max), linewidth_range)

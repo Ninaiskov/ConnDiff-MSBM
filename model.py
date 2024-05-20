@@ -548,7 +548,7 @@ class MultinomialSBM(object):
     def load_data(self):
         data_path = os.path.join(self.main_dir, 'data/'+self.dataset)
         if self.dataset == 'synthetic':
-            filename = 'A_'+str(self.K)+'_'+str(self.S1)+'_'+str(self.S2)+'_'+str(self.Nc_type)+'_{:.3g}'.format(self.alpha)
+            filename = 'A'+str(self.N)+'_'+str(self.K)+'_'+str(self.S1)+'_'+str(self.S2)+'_'+str(self.Nc_type)+'_{:.3g}'.format(self.alpha)
             self.A = np.load(os.path.join(data_path, filename+'.npy'))
         elif self.dataset == 'hcp':
             filename_list = ['fmri_sparse1.npz', 'fmri_sparse2.npz', 'fmri_sparse3.npz', 'fmri_sparse4.npz', 'fmri_sparse5.npz', 

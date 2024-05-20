@@ -9,7 +9,7 @@ def main(config):
     config.main_dir = os.getcwd()
     # initiate results folder and log.txt file
     exp_name = config.dataset+'_'+str(datetime.now())
-    config.save_dir = os.path.join(config.main_dir, 'results',config.dataset,exp_name)#os.path.join(config.main_dir, 'results/'+config.dataset+'/'+exp_name)
+    config.save_dir = os.path.join(config.main_dir, 'results',config.dataset,exp_name)
     if not os.path.exists(config.save_dir):
         os.makedirs(config.save_dir)
     
@@ -33,6 +33,9 @@ def main(config):
             f.write(f"maxiter_alpha: {config.maxiter_alpha}\n")
             #f.write(f"total_time_min: {elapsed_time}\n")
     elif config.dataset == 'synthetic':
+        assert config.N == 100, 'Please choose N=100 or create synthetic data with desired N'
+        assert config.S1 == 5, 'Please choose S1=5 or create synthetic data with desired S1'
+        assert config.S2 == 5, 'Please choose S2=5 or create synthetic data with desired S2'
         with open(os.path.join(config.save_dir, 'log.txt'), 'w') as f:
             f.write(f"dataset: {config.dataset}\n")
             f.write(f"exp_name: {exp_name}\n")
@@ -92,7 +95,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_convergence_criteria', type=bool, default=False, help='use convergence criteria (True/False). If True, the algorithm stops when the convergence criteria is met')
     
     # Miscellaneous.
-    parser.add_argument('--main_dir', type=str, default='/work3/s174162/speciale/', help='main directory')
+    parser.add_argument('--main_dir', type=str, default=None, help='main directory')
     parser.add_argument('--save_dir', type=str, default=None, help='directory to save results')
     parser.add_argument('--disp', type=bool, default=True, help='display iteration results (True/False)')
     parser.add_argument('--sample_step', type=int, default=1, help='number of iterations between each logged sample')

@@ -15,5 +15,6 @@ run_mri_batchjobs.sh
 run_syn_batchjobs.sh
 submit_big.sh
 submit_hpc.sh
-get_nlink.py
 stattest.ipynb
+visualize_extra.ipynb
+get_etaD.py
