@@ -62,3 +62,4 @@ conda activate <env_name>
 ```
 python main.py
 ```
+Alternatively, we have created an introductory notebook "getstarted.ipynb", where you can run the model with the default parameters and visualize the results.
